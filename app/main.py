@@ -24,7 +24,6 @@ async def predict_image(file: UploadFile = File(...)):
 @app.post("/predict/text")
 async def predict_text(prompt: str = Form(...)):
     analysis = analyze_text(prompt)
-    # ✅ Save the text input to database as "prompt"
     save_entry("text", "prompt_input", analysis, prompt)
     return analysis
 

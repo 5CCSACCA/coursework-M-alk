@@ -1,49 +1,97 @@
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 import os
 
-# Initialize sentiment analysis pipeline (lightweight model for 4 CPU/16GB constraint)
-sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+# BitNet model setup
+model_name = "microsoft/BitNet-b1.58-2B-4T"
+tokenizer = None
+model = None
+
+def load_bitnet():
+    """Load BitNet model"""
+    global tokenizer, model
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True
+        )
+        
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            
+        print(f"Loaded BitNet model: {model_name}")
+        return True
+    except Exception as e:
+        print(f"Failed to load BitNet: {e}")
+        return False
 
 def analyze_text(prompt: str):
-    """
-    Analyze text using a lightweight transformer model for nutrition recommendations.
-    Uses sentiment analysis to understand meal descriptions and provide recommendations.
-    """
+    """Run BitNet analysis on text"""
+    global tokenizer, model
+    
+    if model is None:
+        if not load_bitnet():
+            return fallback_analysis(prompt)
+    
     try:
-        # Analyze sentiment of the meal description
-        sentiment_result = sentiment_analyzer(prompt)
-        sentiment = sentiment_result[0]['label']
-        confidence = sentiment_result[0]['score']
+        system_prompt = "You are a nutrition expert. Analyze this meal description and provide health recommendations:"
+        full_prompt = f"{system_prompt}\n\n{prompt}\n\nAnalysis:"
         
-        # Generate nutrition-focused recommendations based on sentiment
-        if sentiment == "POSITIVE":
-            recommendation = "Great choice! Continue with balanced meals including proteins, vegetables, and whole grains."
-        else:
-            recommendation = "Consider adding more nutritious options like fresh vegetables, lean proteins, or whole grains to your meal."
+        inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=512)
         
-        # Extract key food items mentioned
-        food_keywords = ["chicken", "rice", "salad", "vegetables", "fruit", "meat", "fish", "pasta", "bread", "soup"]
-        mentioned_foods = [food for food in food_keywords if food.lower() in prompt.lower()]
+        with torch.no_grad():
+            outputs = model.generate(
+                inputs.input_ids,
+                max_new_tokens=100,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id
+            )
         
-        summary = f"Meal analysis: {sentiment.lower()} sentiment (confidence: {confidence:.2f})"
-        if mentioned_foods:
-            summary += f". Detected foods: {', '.join(mentioned_foods)}"
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        analysis_text = response.split("Analysis:")[-1].strip()
         
-        return {
-            "summary": summary,
-            "recommendation": recommendation,
-            "sentiment": sentiment,
-            "confidence": round(confidence, 3),
-            "detected_foods": mentioned_foods
-        }
+        return parse_bitnet_response(analysis_text, prompt)
         
     except Exception as e:
-        # Fallback to simple analysis if model fails
-        return {
-            "summary": f"Text analysis: {prompt[:50]}...",
-            "recommendation": "Eat balanced meals with proteins and vitamins.",
-            "sentiment": "NEUTRAL",
-            "confidence": 0.5,
-            "detected_foods": [],
-            "error": str(e)
-        }
+        print(f"BitNet inference failed: {e}")
+        return fallback_analysis(prompt)
+
+def parse_bitnet_response(response: str, original_prompt: str):
+    """Convert BitNet response to our format"""
+    sentiment = "NEUTRAL"
+    if any(word in response.lower() for word in ["good", "healthy", "great", "excellent", "nutritious"]):
+        sentiment = "POSITIVE"
+    elif any(word in response.lower() for word in ["bad", "unhealthy", "poor", "avoid", "unhealthy"]):
+        sentiment = "NEGATIVE"
+    
+    food_keywords = ["chicken", "rice", "salad", "vegetables", "fruit", "meat", "fish", "pasta", "bread", "soup", "apple", "banana", "broccoli", "carrot"]
+    mentioned_foods = [food for food in food_keywords if food.lower() in original_prompt.lower()]
+    
+    summary = f"BitNet analysis: {response[:100]}..."
+    if mentioned_foods:
+        summary += f" Detected foods: {', '.join(mentioned_foods)}"
+    
+    return {
+        "summary": summary,
+        "recommendation": response,
+        "sentiment": sentiment,
+        "confidence": 0.95,
+        "detected_foods": mentioned_foods,
+        "model": "BitNet-b1.58-2B-4T"
+    }
+
+def fallback_analysis(prompt: str):
+    """Backup if BitNet fails"""
+    return {
+        "summary": f"Basic analysis: {prompt[:50]}...",
+        "recommendation": "Eat balanced meals with proteins and vitamins.",
+        "sentiment": "NEUTRAL",
+        "confidence": 0.5,
+        "detected_foods": [],
+        "model": "fallback"
+    }
