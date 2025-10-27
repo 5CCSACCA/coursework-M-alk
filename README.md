@@ -1,20 +1,22 @@
-# Milo – AI Nutrition Analyzer (Stage 1)
+# Milo – AI Nutrition Analyzer (Stage 3)
 
-Milo is a **Stage 1** implementation that demonstrates basic model functionality with predefined default parameters. This stage focuses on the core AI models:
+Milo is a **Stage 3** implementation that exposes AI models through a simple API. This stage focuses on:
 
 - **YOLOv8 object detection** for analyzing food images
 - **BitNet-style text analysis** for nutrition recommendations
+- **FastAPI service** that allows external requests to reach the models
 
-The models can receive any type of input and produce predictions, fulfilling the Stage 1 requirements.
+The API returns predictions without persistence, fulfilling the Stage 3 requirements.
 
 ---
 
-## Stage 1 Features
+## Stage 3 Features
 
+* FastAPI application with automatic OpenAPI docs at `/docs`
 * YOLOv8n image inference via the `ultralytics` package
 * Simple `bitnet_service` that provides nutrition recommendations
-* Basic Python script to test both models
-* Predefined default parameters for both models
+* Docker containerization for consistent deployment
+* Two API endpoints for image and text predictions
 
 ---
 
@@ -23,12 +25,12 @@ The models can receive any type of input and produce predictions, fulfilling the
 ```
 .
 ├── app
-│   ├── main.py               # Stage 1 test script
+│   ├── main.py               # FastAPI entrypoint with image/text routes
 │   └── services
 │       ├── yolo_service.py   # YOLOv8 image inference logic
 │       └── bitnet_service.py # Text analysis service
 ├── requirements.txt          # Python dependencies
-└── README.md                 # This file
+└── Dockerfile                # Container build instructions
 ```
 
 ---
@@ -39,6 +41,7 @@ The models can receive any type of input and produce predictions, fulfilling the
 
 * Python 3.11
 * `pip` for installing dependencies
+* Docker (for containerized deployment)
 * (Optional) virtual environment
 
   ```bash
@@ -55,94 +58,118 @@ pip install -r requirements.txt
 > The first run of the YOLO model will download small weights (~6 MB).
 > Make sure you have network access the first time you start the service.
 
-### 3. Run Stage 1 Test
+### 3. Run the API Locally
 
 ```bash
-python app/main.py
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-This will demonstrate both models working with their predefined default parameters.
+Open `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
 
 ---
 
-## Model Usage
+## API Usage
 
-### YOLO Object Detection
+| Endpoint         | Method | Description                                                                |
+| ---------------- | ------ | -------------------------------------------------------------------------- |
+| `/`              | GET    | Health-check message                                                       |
+| `/predict/image` | POST   | Multipart image upload → detects objects using YOLOv8                     |
+| `/predict/text`  | POST   | Form field `prompt` → analyzes text and returns recommendation            |
 
-The YOLO service (`yolo_service.py`) can detect objects in images:
+### Example `/predict/image`
 
-```python
-from app.services.yolo_service import detect_objects
-
-# Load image bytes
-with open("food_image.jpg", "rb") as f:
-    image_bytes = f.read()
-
-# Get detections
-detections = detect_objects(image_bytes)
-print(detections)
+```bash
+curl -X POST "http://127.0.0.1:8000/predict/image" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@your_image.jpg"
 ```
 
-**Expected Output:**
-```json
-[
-    {"label": "person", "confidence": 0.95},
-    {"label": "car", "confidence": 0.87},
-    {"label": "dog", "confidence": 0.73}
-]
-```
-
-### BitNet Text Analysis
-
-The BitNet service (`bitnet_service.py`) analyzes nutrition-related text:
-
-```python
-from app.services.bitnet_service import analyze_text
-
-# Analyze text input
-result = analyze_text("I ate chicken and rice for lunch")
-print(result)
-```
-
-**Expected Output:**
+**Expected Response:**
 ```json
 {
-    "summary": "This text is about: I ate chicken and rice for lunch...",
-    "recommendation": "Eat balanced meals with proteins and vitamins."
+  "filename": "your_image.jpg",
+  "detections": [
+    {"label": "person", "confidence": 0.95},
+    {"label": "car", "confidence": 0.87}
+  ]
+}
+```
+
+### Example `/predict/text`
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict/text" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "prompt=I ate chicken and salad for dinner"
+```
+
+**Expected Response:**
+```json
+{
+  "summary": "This text is about: I ate chicken and salad for dinner...",
+  "recommendation": "Eat balanced meals with proteins and vitamins."
 }
 ```
 
 ---
 
-## Stage 1 Summary
+## Docker Support
 
-Stage 1 successfully implements the coursework requirement:
+Build the container image:
 
-> "Begin with a model that comes with predefined default parameters. Write Python code that allows the model to receive any type of input and produce predictions."
+```bash
+docker build -t milo-stage3 .
+```
+
+Run the container:
+
+```bash
+docker run -p 8000:8000 milo-stage3
+```
+
+The container runs the FastAPI app and serves predictions on port 8000.
+
+---
+
+## Stage 3 Summary
+
+Stage 3 successfully implements the coursework requirement:
+
+> "Expose the model through a simple API. This API will allow external requests to reach the model, and you will test it thoroughly to verify that predictions are being returned correctly."
 
 **What's Implemented:**
-- ✅ YOLOv8 model with default parameters for object detection
-- ✅ BitNet-style model with default parameters for text analysis
-- ✅ Python code that can receive any input type and produce predictions
-- ✅ Test script demonstrating both models work correctly
+- ✅ FastAPI service with HTTP endpoints
+- ✅ External requests can reach both models
+- ✅ Predictions are returned correctly
+- ✅ API documentation available at `/docs`
+- ✅ Containerized deployment
+- ✅ Thoroughly tested endpoints
 
 **Next Steps:**
-- Stage 2: Containerization with Docker
-- Stage 3: API exposure with FastAPI
-- Stage 4: Database persistence
+- Stage 4: Database persistence and `/history` endpoint
 
 ---
 
 ## Testing
 
-Run the test script to verify both models work:
-
+### Local Testing
 ```bash
-python app/main.py
+# Run API server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Test endpoints
+curl -X GET "http://localhost:8000/"
+curl -X POST "http://localhost:8000/predict/text" -H "Content-Type: application/x-www-form-urlencoded" -d "prompt=I ate chicken and rice"
+
+# View API docs
+open http://localhost:8000/docs
 ```
 
-This will output:
-- YOLO model loading confirmation
-- Example detection results
-- BitNet text analysis examples
-- Confirmation that Stage 1 is complete
+### Docker Testing
+```bash
+# Build and run container
+docker build -t milo-stage3 .
+docker run -p 8000:8000 milo-stage3
+
+# Test the same endpoints as above
+```

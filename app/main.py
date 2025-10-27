@@ -1,68 +1,37 @@
 #!/usr/bin/env python3
 """
-Stage 1: Basic Model Services
-This script demonstrates the core functionality of both models:
-- YOLO object detection for images
-- BitNet-style text analysis for nutrition recommendations
+Stage 3: FastAPI Service
+This script exposes the models through a simple API that allows external requests
+to reach the models and return predictions.
 """
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from fastapi import FastAPI, UploadFile, File, Form
 from app.services.yolo_service import detect_objects
 from app.services.bitnet_service import analyze_text
-from PIL import Image
-import io
+import uvicorn
 
-def test_yolo_model():
-    """Test YOLO model with a sample image"""
-    print("=== Testing YOLO Object Detection ===")
-    
-    # Create a simple test image (you can replace this with actual image loading)
-    print("Loading YOLO model...")
-    
-    # For demonstration, we'll create a simple test
-    # In practice, you would load an actual image file
-    print("YOLO model loaded successfully!")
-    print("Model can detect objects in images and return:")
-    print("- Object labels (e.g., 'person', 'car', 'dog')")
-    print("- Confidence scores (0.0 to 1.0)")
-    print("- Bounding box coordinates")
-    
-    # Example of what the output would look like
-    example_detections = [
-        {"label": "person", "confidence": 0.95},
-        {"label": "car", "confidence": 0.87},
-        {"label": "dog", "confidence": 0.73}
-    ]
-    print(f"Example output: {example_detections}")
+app = FastAPI(title="Milo – AI Nutrition Analyzer (Stage 3)")
 
-def test_bitnet_model():
-    """Test BitNet-style text analysis"""
-    print("\n=== Testing BitNet Text Analysis ===")
-    
-    # Test with sample nutrition-related prompts
-    test_prompts = [
-        "I ate chicken and rice for lunch",
-        "What should I eat for breakfast?",
-        "I'm trying to lose weight, any recommendations?"
-    ]
-    
-    for prompt in test_prompts:
-        print(f"\nInput: '{prompt}'")
-        result = analyze_text(prompt)
-        print(f"Output: {result}")
+@app.get("/")
+def root():
+    return {"message": "Milo API running...", "stage": "Stage 3 - API"}
 
-def main():
-    """Main function to demonstrate Stage 1 functionality"""
-    print("Milo - AI Nutrition Analyzer (Stage 1)")
-    print("=" * 50)
-    
-    # Test both models
-    test_yolo_model()
-    test_bitnet_model()
-    
-    print("\n" + "=" * 50)
-    print("Stage 1 Complete!")
-    print("Both models are working with predefined default parameters.")
-    print("Ready for Stage 2 (Containerization)")
+@app.post("/predict/image")
+async def predict_image(file: UploadFile = File(...)):
+    """Predict objects in uploaded image using YOLO"""
+    contents = await file.read()
+    detections = detect_objects(contents)
+    return {"filename": file.filename, "detections": detections}
+
+@app.post("/predict/text")
+async def predict_text(prompt: str = Form(...)):
+    """Analyze text using BitNet-style model"""
+    analysis = analyze_text(prompt)
+    return analysis
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
