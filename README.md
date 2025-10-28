@@ -1,6 +1,6 @@
 # Milo – AI Nutrition Analyzer
 
-Milo is a lightweight **FastAPI** service that combines **YOLOv8 object detection** and a **language-model-style text analyzer** for “what’s on my plate?” nutrition projects.
+Milo is a lightweight **FastAPI** service that combines **YOLOv11 object detection** and a **language-model-style text analyzer** for "what's on my plate?" nutrition projects.
 Users can upload an image *or* enter a text description of a meal, and the service returns AI-generated detections or recommendations.
 All interactions are **persisted in an SQLite database** so that past analyses can be retrieved later.
 
@@ -9,7 +9,7 @@ All interactions are **persisted in an SQLite database** so that past analyses c
 ## Features
 
 * FastAPI application with automatic OpenAPI docs at `/docs`
-* YOLOv8n image inference via the `ultralytics` package
+* YOLOv11n image inference via the `ultralytics` package
 * Simple `bitnet_service` with real transformer-based text analysis
 * **SQLite persistence layer** that records every `/predict` request
 * `/history` endpoint to retrieve previous image and text analyses

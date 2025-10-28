@@ -4,7 +4,7 @@ import io, os
 
 os.environ["TORCH_WEIGHTS_ONLY"] = "False"
 
-model = YOLO("yolov8n.pt")
+model = YOLO("yolo11n.pt")
 
 # Food lists for classification
 healthy_foods = ["apple", "banana", "broccoli", "carrot", "salad", "chicken", "fish", "orange", "grape", "strawberry", "tomato", "cucumber", "lettuce", "spinach"]
