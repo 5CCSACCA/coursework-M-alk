@@ -1,37 +1,70 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from app.services.yolo_service import detect_objects
 from app.services.bitnet_service import analyze_text
-from app.services.database import init_db, save_entry, get_history
+from app.services.firebase_service import save_analysis, get_analysis, get_all_analyses, update_analysis, delete_analysis, get_analyses_by_type
 import uvicorn
 
-app = FastAPI(title="Milo – AI Nutrition Analyzer (Stage 4)")
-
-init_db()
+# FastAPI app
+app = FastAPI(title="Milo – AI Nutrition Analyzer (Stage 5)")
 
 @app.get("/")
 def root():
-    return {"message": "Milo API running...", "stage": "Stage 4 - API with Database"}
-
+    return {"message": "Milo API running...", "stage": "Stage 5: Firebase Integration"}
 
 @app.post("/predict/image")
 async def predict_image(file: UploadFile = File(...)):
     contents = await file.read()
-    detections = detect_objects(contents)
-    save_entry("image", file.filename, detections)
-    return {"filename": file.filename, "detections": detections}
-
+    detections = detect_objects(contents)  # YOLO detection
+    
+    result = save_analysis("image", file.filename, detections)
+    firebase_id = result.get("id") if result and "id" in result else None
+    
+    return {"filename": file.filename, "detections": detections, "firebase_id": firebase_id}
 
 @app.post("/predict/text")
 async def predict_text(prompt: str = Form(...)):
-    analysis = analyze_text(prompt)
-    save_entry("text", "prompt_input", analysis, prompt)
-    return analysis
+    analysis = analyze_text(prompt)  # BitNet analysis
+    
+    result = save_analysis("text", "prompt_input", analysis, prompt)
+    firebase_id = result.get("id") if result and "id" in result else None
+    
+    return {**analysis, "firebase_id": firebase_id}
 
+@app.get("/analyses")
+def get_all():
+    """Get all analyses from Firebase"""
+    return get_all_analyses()
 
-@app.get("/history")
-def history():
-    return {"history": get_history()}
+@app.get("/analyses/{analysis_id}")
+def get_specific(analysis_id: str):
+    """Get specific analysis by ID"""
+    result = get_analysis(analysis_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
+@app.put("/analyses/{analysis_id}")
+def update_specific(analysis_id: str, update_data: dict):
+    """Update analysis in Firebase"""
+    result = update_analysis(analysis_id, update_data)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+@app.delete("/analyses/{analysis_id}")
+def delete_specific(analysis_id: str):
+    """Delete analysis from Firebase"""
+    result = delete_analysis(analysis_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+@app.get("/analyses/type/{analysis_type}")
+def get_by_type(analysis_type: str):
+    """Get analyses filtered by type (image or text)"""
+    if analysis_type not in ["image", "text"]:
+        raise HTTPException(status_code=400, detail="Analysis type must be 'image' or 'text'")
+    return get_analyses_by_type(analysis_type)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

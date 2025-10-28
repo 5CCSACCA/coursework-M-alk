@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import os
 
-# BitNet model setup
+# BitNet model name
 model_name = "microsoft/BitNet-b1.58-2B-4T"
 tokenizer = None
 model = None
@@ -38,11 +38,14 @@ def analyze_text(prompt: str):
             return fallback_analysis(prompt)
     
     try:
+        # Create nutrition-focused prompt
         system_prompt = "You are a nutrition expert. Analyze this meal description and provide health recommendations:"
         full_prompt = f"{system_prompt}\n\n{prompt}\n\nAnalysis:"
         
+        # Tokenize input
         inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=512)
         
+        # Generate response
         with torch.no_grad():
             outputs = model.generate(
                 inputs.input_ids,
@@ -52,6 +55,7 @@ def analyze_text(prompt: str):
                 pad_token_id=tokenizer.eos_token_id
             )
         
+        # Extract analysis from response
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
         analysis_text = response.split("Analysis:")[-1].strip()
         
@@ -62,7 +66,7 @@ def analyze_text(prompt: str):
         return fallback_analysis(prompt)
 
 def parse_bitnet_response(response: str, original_prompt: str):
-    """Convert BitNet response to our format"""
+    """Parse BitNet response"""
     sentiment = "NEUTRAL"
     if any(word in response.lower() for word in ["good", "healthy", "great", "excellent", "nutritious"]):
         sentiment = "POSITIVE"
@@ -86,7 +90,7 @@ def parse_bitnet_response(response: str, original_prompt: str):
     }
 
 def fallback_analysis(prompt: str):
-    """Backup if BitNet fails"""
+    """Fallback analysis"""
     return {
         "summary": f"Basic analysis: {prompt[:50]}...",
         "recommendation": "Eat balanced meals with proteins and vitamins.",
