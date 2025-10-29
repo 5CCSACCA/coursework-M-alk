@@ -17,3 +17,7 @@ python-multipart==0.0.6
 transformers==4.35.2
 huggingface-hub==0.36.0
 safetensors==0.6.2
+
+# Firebase / Firestore
+firebase-admin>=6.5.0,<7.0.0
+google-cloud-firestore>=2.16.0,<3.0.0

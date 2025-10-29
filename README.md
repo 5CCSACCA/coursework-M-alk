@@ -1,8 +1,8 @@
-# Milo – AI Nutrition Analyzer
+# Milo – AI Nutrition Analyzer 
 
 Milo is a lightweight **FastAPI** service that combines **YOLOv11 object detection** and a **language-model-style text analyzer** for "what's on my plate?" nutrition projects.
 Users can upload an image *or* enter a text description of a meal, and the service returns AI-generated detections or recommendations.
-All interactions are **persisted in an SQLite database** so that past analyses can be retrieved later.
+All interactions are **persisted in Firebase Firestore** with full CRUD capabilities for managing analysis data.
 
 ---
 
@@ -10,9 +10,9 @@ All interactions are **persisted in an SQLite database** so that past analyses c
 
 * FastAPI application with automatic OpenAPI docs at `/docs`
 * YOLOv11n image inference via the `ultralytics` package
-* Simple `bitnet_service` with real transformer-based text analysis
-* **SQLite persistence layer** that records every `/predict` request
-* `/history` endpoint to retrieve previous image and text analyses
+* BitNet model integration for text analysis
+* **Firebase Firestore** for cloud storage and data management
+* Full CRUD API endpoints for analysis management
 * Docker image for consistent deployment
 
 ---
@@ -21,14 +21,17 @@ All interactions are **persisted in an SQLite database** so that past analyses c
 
 ```
 .
-├── app
-│   ├── main.py               # FastAPI entrypoint with image/text routes and /history
-│   └── services
-│       ├── yolo_service.py   # YOLOv8 image inference logic
-│       ├── bitnet_service.py # Transformer-based text analysis service
-│       └── database.py       # SQLite persistence functions
-├── requirements.txt          # Python dependencies
-└── Dockerfile                # Container build instructions
+├── app/
+│   ├── main.py               # FastAPI entrypoint with CRUD endpoints
+│   └── services/
+│       ├── yolo_service.py      # YOLOv11 image inference logic
+│       ├── bitnet_service.py    # BitNet text analysis 
+│       └── firebase_service.py   # Firebase Firestore operations
+├── requirements.txt              # Python dependencies
+├── firebase-service-account.json  # Firebase credentials
+├── docker-compose.yml             # Docker Compose config
+├── Dockerfile                    # Container build instructions
+└── .gitignore                   # Git ignore rules
 ```
 
 ---
@@ -67,12 +70,16 @@ Open `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
 
 ## API Usage
 
-| Endpoint         | Method | Description                                                                |
-| ---------------- | ------ | -------------------------------------------------------------------------- |
-| `/`              | GET    | Health-check message                                                       |
-| `/predict/image` | POST   | Multipart image upload → detects food items using YOLOv8 and saves results |
-| `/predict/text`  | POST   | Form field `prompt` → analyzes text and saves recommendation               |
-| `/history`       | GET    | Returns persisted records of all previous image + text analyses            |
+| Endpoint                    | Method | Description                                                                |
+| --------------------------- | ------ | -------------------------------------------------------------------------- |
+| `/`                         | GET    | Health-check message                                                       |
+| `/predict/image`            | POST   | Multipart image upload → detects food items using YOLOv11 and saves to Firebase |
+| `/predict/text`             | POST   | Form field `prompt` → analyzes text and saves to Firebase                  |
+| `/analyses`                 | GET    | Get all analyses from Firebase                                             |
+| `/analyses/{id}`            | GET    | Get specific analysis by ID                                                |
+| `/analyses/{id}`            | PUT    | Update analysis in Firebase                                                |
+| `/analyses/{id}`            | DELETE | Delete analysis from Firebase                                              |
+| `/analyses/type/{type}`     | GET    | Get analyses filtered by type (image or text)                              |
 
 ### Example `/predict/image`
 
@@ -90,24 +97,52 @@ curl -X POST "http://127.0.0.1:8000/predict/text" \
   -d "prompt=I ate chicken and salad for dinner"
 ```
 
-### Example `/history` response
+### Example `/analyses` response
 
 ```json
 {
-  "history": [
+  "analyses": [
     {
-      "id": 4,
-      "type": "text",
+      "id": "abc123",
+      "analysis_type": "text",
       "filename": "prompt_input",
-      "detections": {
-        "summary": "This text is about: I ate chicken and salad for dinner...",
-        "recommendation": "Eat balanced meals with proteins and vitamins."
+      "data": {
+        "summary": "BitNet analysis: This meal contains...",
+        "recommendation": "Great choice! Continue with balanced meals...",
+        "sentiment": "POSITIVE",
+        "confidence": 0.95,
+        "detected_foods": ["chicken", "salad"]
       },
       "prompt": "I ate chicken and salad for dinner",
-      "timestamp": "2025-10-26T20:55:31.200027"
+      "timestamp": "2025-10-27T22:55:31.200027",
+      "created_at": "2025-10-27T22:55:31.200Z"
     }
   ]
 }
+```
+
+### Example CRUD Operations
+
+**Get specific analysis:**
+```bash
+curl -X GET "http://127.0.0.1:8000/analyses/abc123"
+```
+
+**Update analysis:**
+```bash
+curl -X PUT "http://127.0.0.1:8000/analyses/abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"summary": "Updated analysis"}}'
+```
+
+**Delete analysis:**
+```bash
+curl -X DELETE "http://127.0.0.1:8000/analyses/abc123"
+```
+
+**Get analyses by type:**
+```bash
+curl -X GET "http://127.0.0.1:8000/analyses/type/image"
 ```
 
 ---
@@ -140,9 +175,7 @@ The container runs the same FastAPI app and persists the `detections.db` file in
 
 ---
 
-## Stage 4 Summary
+## Stage 5 Summary
 
-Stage 4 added the **persistence layer** and **GET /history endpoint**, fulfilling the coursework goal:
-
-> “Add persistence by setting up a database that records all incoming requests and implement a GET endpoint to retrieve past interactions.”
+Stage 5 extends storage capabilities by integrating **Firebase Firestore** for cloud-based data management:
 
