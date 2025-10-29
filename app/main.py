@@ -1,9 +1,10 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header, Depends
 from app.services.yolo_service import detect_objects
 from app.services.bitnet_service import analyze_text
 from app.services.firebase_service import save_analysis, get_analysis, get_all_analyses, update_analysis, delete_analysis, get_analyses_by_type
 from app.services.database import init_db, save_entry, get_history
 from app.services.queue import publish
+from app.services.auth_service import get_bearer_token, verify_id_token
 import uvicorn
 
 # FastAPI app
@@ -17,8 +18,19 @@ def on_startup():
 def root():
     return {"message": "Milo API running...", "stage": "Stage 5: Firebase Integration"}
 
+
+def get_current_user(authorization: str = Header(None)):
+    # Firebase auth via ID token
+    token = get_bearer_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    user = verify_id_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return user
+
 @app.post("/predict/image")
-async def predict_image(file: UploadFile = File(...)):
+async def predict_image(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     contents = await file.read()
     detections = detect_objects(contents)  # YOLO detection
     
@@ -41,7 +53,7 @@ async def predict_image(file: UploadFile = File(...)):
 
 
 @app.post("/predict/text")
-async def predict_text(prompt: str = Form(...)):
+async def predict_text(prompt: str = Form(...), user: dict = Depends(get_current_user)):
     analysis = analyze_text(prompt)  # BitNet analysis
     
     save_entry("text", "prompt_input", analysis, prompt)
@@ -60,20 +72,26 @@ async def predict_text(prompt: str = Form(...)):
     return {**analysis, "firebase_id": firebase_id}
 
 
+@app.get("/me")
+def me(user: dict = Depends(get_current_user)):
+    # simple current-user endpoint
+    return {"user": user}
+
+
     
 
 @app.get("/history")
-def history():
+def history(user: dict = Depends(get_current_user)):
     """Return local SQLite history of past requests (Stage 4)"""
     return {"history": get_history()}
 
 @app.get("/analyses")
-def get_all():
+def get_all(user: dict = Depends(get_current_user)):
     """Get all analyses from Firebase"""
     return get_all_analyses()
 
 @app.get("/analyses/{analysis_id}")
-def get_specific(analysis_id: str):
+def get_specific(analysis_id: str, user: dict = Depends(get_current_user)):
     """Get specific analysis by ID"""
     result = get_analysis(analysis_id)
     if "error" in result:
@@ -81,7 +99,7 @@ def get_specific(analysis_id: str):
     return result
 
 @app.put("/analyses/{analysis_id}")
-def update_specific(analysis_id: str, update_data: dict):
+def update_specific(analysis_id: str, update_data: dict, user: dict = Depends(get_current_user)):
     """Update analysis in Firebase"""
     result = update_analysis(analysis_id, update_data)
     if "error" in result:
@@ -89,7 +107,7 @@ def update_specific(analysis_id: str, update_data: dict):
     return result
 
 @app.delete("/analyses/{analysis_id}")
-def delete_specific(analysis_id: str):
+def delete_specific(analysis_id: str, user: dict = Depends(get_current_user)):
     """Delete analysis from Firebase"""
     result = delete_analysis(analysis_id)
     if "error" in result:
@@ -97,7 +115,7 @@ def delete_specific(analysis_id: str):
     return result
 
 @app.get("/analyses/type/{analysis_type}")
-def get_by_type(analysis_type: str):
+def get_by_type(analysis_type: str, user: dict = Depends(get_current_user)):
     """Get analyses filtered by type (image or text)"""
     if analysis_type not in ["image", "text"]:
         raise HTTPException(status_code=400, detail="Analysis type must be 'image' or 'text'")
