@@ -3,6 +3,7 @@ from app.services.yolo_service import detect_objects
 from app.services.bitnet_service import analyze_text
 from app.services.firebase_service import save_analysis, get_analysis, get_all_analyses, update_analysis, delete_analysis, get_analyses_by_type
 from app.services.database import init_db, save_entry, get_history
+from app.services.queue import publish
 import uvicorn
 
 # FastAPI app
@@ -10,7 +11,6 @@ app = FastAPI(title="Milo – AI Nutrition Analyzer (Stage 5)")
 
 @app.on_event("startup")
 def on_startup():
-    # ensure local sqlite history table exists (Stage 4)
     init_db()
 
 @app.get("/")
@@ -22,25 +22,45 @@ async def predict_image(file: UploadFile = File(...)):
     contents = await file.read()
     detections = detect_objects(contents)  # YOLO detection
     
-    # Stage 4: persist request/response locally
     save_entry("image", file.filename, detections)
 
     result = save_analysis("image", file.filename, detections)
     firebase_id = result.get("id") if result and "id" in result else None
+    # send event for async post-processing
+    publish({
+        "type": "image",
+        "filename": file.filename,
+        "data": detections,
+        "firebase_id": firebase_id
+    })
     
     return {"filename": file.filename, "detections": detections, "firebase_id": firebase_id}
+
+
+
+
 
 @app.post("/predict/text")
 async def predict_text(prompt: str = Form(...)):
     analysis = analyze_text(prompt)  # BitNet analysis
     
-    # Stage 4: persist request/response locally
     save_entry("text", "prompt_input", analysis, prompt)
 
     result = save_analysis("text", "prompt_input", analysis, prompt)
     firebase_id = result.get("id") if result and "id" in result else None
+    # send event for async post-processing
+    publish({
+        "type": "text",
+        "filename": "prompt_input",
+        "data": analysis,
+        "prompt": prompt,
+        "firebase_id": firebase_id
+    })
     
     return {**analysis, "firebase_id": firebase_id}
+
+
+    
 
 @app.get("/history")
 def history():
