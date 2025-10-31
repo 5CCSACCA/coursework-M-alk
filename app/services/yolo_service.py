@@ -4,21 +4,23 @@ import io, os
 
 os.environ["TORCH_WEIGHTS_ONLY"] = "False"
 
-model = YOLO("yolov8n.pt")
+# Load YOLOv11 model
+model = YOLO("yolo11n.pt")
 
-# Food lists for classification
+# Food classification lists
 healthy_foods = ["apple", "banana", "broccoli", "carrot", "salad", "chicken", "fish", "orange", "grape", "strawberry", "tomato", "cucumber", "lettuce", "spinach"]
 unhealthy_foods = ["pizza", "burger", "donut", "cake", "candy", "cookie", "ice cream", "hot dog", "sandwich", "fries"]
 
 def detect_objects(image_bytes: bytes):
     """Detect objects and classify food/non-food"""
     image = Image.open(io.BytesIO(image_bytes))
-    results = model(image)
+    results = model(image)  # Run YOLO inference
     
     detections = []
     food_items = []
     non_food_items = []
     
+    # Process each detection
     for box in results[0].boxes:
         cls_id = int(box.cls[0])
         label = model.names[cls_id]
@@ -55,7 +57,7 @@ def detect_objects(image_bytes: bytes):
     }
 
 def generate_nutrition_summary(food_items, non_food_items):
-    """Create nutrition advice from detected foods"""
+    """Generate nutrition advice"""
     if not food_items:
         return "No food items detected. Try uploading a clearer image of food."
     

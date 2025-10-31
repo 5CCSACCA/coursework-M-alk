@@ -1,148 +1,94 @@
-# Milo – AI Nutrition Analyzer
+# Milo – Nutrition API
+Mohamed Ali Khalifa Alketbi
+K22056537
+https://github.com/5CCSACCA/coursework-M-alk.git
 
-Milo is a lightweight **FastAPI** service that combines **YOLOv8 object detection** and a **language-model-style text analyzer** for “what’s on my plate?” nutrition projects.
-Users can upload an image *or* enter a text description of a meal, and the service returns AI-generated detections or recommendations.
-All interactions are **persisted in an SQLite database** so that past analyses can be retrieved later.
 
----
+FastAPI app that uses YOLOv11 for image recognition and BitNet for text analysis. Stores results in Firebase Firestore.
 
-## Features
-
-* FastAPI application with automatic OpenAPI docs at `/docs`
-* YOLOv8n image inference via the `ultralytics` package
-* Simple `bitnet_service` with real transformer-based text analysis
-* **SQLite persistence layer** that records every `/predict` request
-* `/history` endpoint to retrieve previous image and text analyses
-* Docker image for consistent deployment
-
----
-
-## Project Layout
-
-```
-.
-├── app
-│   ├── main.py               # FastAPI entrypoint with image/text routes and /history
-│   └── services
-│       ├── yolo_service.py   # YOLOv8 image inference logic
-│       ├── bitnet_service.py # Transformer-based text analysis service
-│       └── database.py       # SQLite persistence functions
-├── requirements.txt          # Python dependencies
-└── Dockerfile                # Container build instructions
-```
-
----
-
-## Getting Started
-
-### 1. Prerequisites
-
-* Python 3.11
-* `pip` for installing dependencies
-* (Optional) virtual environment
-
-  ```bash
-  python -m venv .venv && source .venv/bin/activate
-  ```
-
-### 2. Install Dependencies
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-> The first run of the YOLO model will download small weights (~6 MB).
-> Make sure you have network access the first time you start the service.
-
-### 3. Run the API Locally
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Open `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
-
----
-
-## API Usage
-
-| Endpoint         | Method | Description                                                                |
-| ---------------- | ------ | -------------------------------------------------------------------------- |
-| `/`              | GET    | Health-check message                                                       |
-| `/predict/image` | POST   | Multipart image upload → detects food items using YOLOv8 and saves results |
-| `/predict/text`  | POST   | Form field `prompt` → analyzes text and saves recommendation               |
-| `/history`       | GET    | Returns persisted records of all previous image + text analyses            |
-
-### Example `/predict/image`
-
-```bash
-curl -X POST "http://127.0.0.1:8000/predict/image" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@examples/plate.jpg"
-```
-
-### Example `/predict/text`
-
-```bash
-curl -X POST "http://127.0.0.1:8000/predict/text" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "prompt=I ate chicken and salad for dinner"
-```
-
-### Example `/history` response
-
-```json
-{
-  "history": [
-    {
-      "id": 4,
-      "type": "text",
-      "filename": "prompt_input",
-      "detections": {
-        "summary": "This text is about: I ate chicken and salad for dinner...",
-        "recommendation": "Eat balanced meals with proteins and vitamins."
-      },
-      "prompt": "I ate chicken and salad for dinner",
-      "timestamp": "2025-10-26T20:55:31.200027"
-    }
-  ]
-}
-```
-
----
-
-## Docker Support
-
-### Option 1: Docker Compose (Recommended)
+## Quick Start
 
 ```bash
 docker-compose up --build
 ```
 
-This will build and run the service with proper volume mounting and health checks.
+API runs at `http://localhost:8000`. API docs at `/docs`.
 
-### Option 2: Manual Docker
+## Endpoints
 
-Build the container image:
+All endpoints are public (no authentication required).
+
+- `GET /` - health check
+- `POST /predict/image` - upload image, get food detection
+- `POST /predict/text` - analyze text meal description
+- `GET /history` - get local SQLite history
+- `GET /analyses` - get all Firebase analyses
+- `GET /analyses/{id}` - get specific analysis
+- `PUT /analyses/{id}` - update analysis
+- `DELETE /analyses/{id}` - delete analysis
+- `GET /stats` - simple stats (total analyses count)
+
+### Example Usage
 
 ```bash
-docker build -t milo-service .
+# Health check
+curl http://localhost:8000/
+
+# Analyze text
+curl -X POST http://localhost:8000/predict/text -F "prompt=I ate salad and chicken"
+
+# Upload image
+curl -X POST http://localhost:8000/predict/image -F "file=@meal.jpg"
+
+# Get history
+curl http://localhost:8000/history
+
+# Get stats
+curl http://localhost:8000/stats
 ```
 
-Run the container:
+## Architecture
+
+- **Stage 1-3**: YOLO/BitNet inference, Docker, FastAPI
+- **Stage 4**: SQLite persistence + `/history` endpoint
+- **Stage 5**: Firebase Firestore integration
+- **Stage 6**: RabbitMQ worker for async post-processing
+
+- **Stage 7**: User authentication (still not implemented)
+
+## Setup
+
+Files you need:
+- `firebase-service-account.json` - Firebase credentials
+- `docker-compose.yml` - runs API, worker, RabbitMQ
+- `app/` - main code and services
+
+Env quickstart (create a `.env` or export vars):
 
 ```bash
-docker run -p 8000:8000 milo-service
+export FIREBASE_PROJECT_ID=milo-xxxxx
+export RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+export QUEUE_NAME=postprocess
 ```
 
-The container runs the same FastAPI app and persists the `detections.db` file inside the container (or a mounted volume if configured).
+Services:
+- `milo-api` - FastAPI on port 8000
+- `milo-worker` - processes RabbitMQ messages
+- `rabbitmq` - message broker (management UI on 15672)
 
----
+## Run tests
 
-## Stage 4 Summary
+```bash
+# Inside container
+docker-compose exec milo-api python -m pytest -q
 
-Stage 4 added the **persistence layer** and **GET /history endpoint**, fulfilling the coursework goal:
+# Or locally (need Python 3.11)
+pytest -q
+```
 
-> “Add persistence by setting up a database that records all incoming requests and implement a GET endpoint to retrieve past interactions.”
+## Notes
 
+- All API endpoints are open (Stage 7 authentication not implemented)
+- Uses SQLite for local persistence and Firebase Firestore for cloud storage
+- RabbitMQ handles async post-processing between services
+- Test coverage includes predict endpoints and history.
