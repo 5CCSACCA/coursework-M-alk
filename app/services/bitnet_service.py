@@ -38,14 +38,13 @@ def analyze_text(prompt: str):
             return fallback_analysis(prompt)
     
     try:
-        # Create nutrition-focused prompt
         system_prompt = "You are a nutrition expert. Analyze this meal description and provide health recommendations:"
         full_prompt = f"{system_prompt}\n\n{prompt}\n\nAnalysis:"
         
         # Tokenize input
         inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=512)
         
-        # Generate response
+        # response from the model
         with torch.no_grad():
             outputs = model.generate(
                 inputs.input_ids,

@@ -47,4 +47,3 @@ services:
     command: ["python", "-m", "app.worker"]
     restart: unless-stopped
 
-

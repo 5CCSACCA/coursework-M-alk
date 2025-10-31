@@ -4,18 +4,14 @@ from datetime import datetime
 import os
 
 def init_firebase():
-    """Initialize Firebase connection"""
     try:
         if not firebase_admin._apps:
-            # Get project ID from environment 
             project_id = os.getenv('FIREBASE_PROJECT_ID', 'milo-4a15b')
             
-            # load service account key
             if os.path.exists('firebase-service-account.json'):
                 cred = credentials.Certificate('firebase-service-account.json')
                 firebase_admin.initialize_app(cred, {'projectId': project_id})
             else:
-                # Use credentials
                 firebase_admin.initialize_app(options={'projectId': project_id})
         
         return firestore.client()
@@ -23,11 +19,9 @@ def init_firebase():
         print(f"Firebase init failed: {e}")
         return None
 
-# Initialize Firebase connection
 db = init_firebase()
 
 def save_analysis(analysis_type: str, filename: str, data: dict, prompt: str = None):
-    """Save analysis to Firebase"""
     if not db:
         return {"error": "Firebase not initialized"}
     
@@ -40,14 +34,12 @@ def save_analysis(analysis_type: str, filename: str, data: dict, prompt: str = N
             "timestamp": datetime.now().isoformat(),
             "created_at": firestore.SERVER_TIMESTAMP
         }
-        
         doc_ref = db.collection('analyses').add(doc_data)
         return {"id": doc_ref[1].id, "status": "saved"}
     except Exception as e:
         return {"error": str(e)}
 
 def get_analysis(analysis_id: str):
-    """Get specific analysis by ID"""
     if not db:
         return {"error": "Firebase not initialized"}
     
@@ -65,35 +57,28 @@ def get_analysis(analysis_id: str):
         return {"error": str(e)}
 
 def get_all_analyses():
-    """Get all analyses"""
     if not db:
         return {"analyses": [], "message": "Firebase not configured - running in demo mode"}
     
     try:
         docs = db.collection('analyses').order_by('created_at', direction=firestore.Query.DESCENDING).stream()
-        
         analyses = []
         for doc in docs:
             data = doc.to_dict()
             data['id'] = doc.id
             analyses.append(data)
-        
         return {"analyses": analyses}
     except Exception as e:
         return {"analyses": [], "error": str(e)}
 
 def update_analysis(analysis_id: str, update_data: dict):
-    """Update analysis in Firebase"""
     if not db:
         return {"error": "Firebase not initialized"}
     
     try:
         doc_ref = db.collection('analyses').document(analysis_id)
-        
         update_data['updated_at'] = firestore.SERVER_TIMESTAMP
-        
         doc_ref.update(update_data)
-        
         doc = doc_ref.get()
         if doc.exists:
             data = doc.to_dict()
@@ -105,7 +90,6 @@ def update_analysis(analysis_id: str, update_data: dict):
         return {"error": str(e)}
 
 def delete_analysis(analysis_id: str):
-    """Delete analysis from Firebase"""
     if not db:
         return {"error": "Firebase not initialized"}
     
@@ -122,19 +106,16 @@ def delete_analysis(analysis_id: str):
         return {"error": str(e)}
 
 def get_analyses_by_type(analysis_type: str):
-    """Get analyses filtered by type"""
     if not db:
         return {"error": "Firebase not initialized"}
     
     try:
         docs = db.collection('analyses').where('analysis_type', '==', analysis_type).order_by('created_at', direction=firestore.Query.DESCENDING).stream()
-        
         analyses = []
         for doc in docs:
             data = doc.to_dict()
             data['id'] = doc.id
             analyses.append(data)
-        
         return {"analyses": analyses}
     except Exception as e:
         return {"error": str(e)}

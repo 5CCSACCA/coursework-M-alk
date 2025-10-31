@@ -1,4 +1,8 @@
 # Milo – Nutrition API
+Mohamed Ali Khalifa Alketbi
+K22056537
+https://github.com/5CCSACCA/coursework-M-alk.git
+
 
 FastAPI app that uses YOLOv11 for image recognition and BitNet for text analysis. Stores results in Firebase Firestore.
 
@@ -12,24 +16,35 @@ API runs at `http://localhost:8000`. API docs at `/docs`.
 
 ## Endpoints
 
-All endpoints need auth except `/`.
+All endpoints are public (no authentication required).
 
 - `GET /` - health check
 - `POST /predict/image` - upload image, get food detection
 - `POST /predict/text` - analyze text meal description
-- `GET /me` - get current user info
 - `GET /history` - get local SQLite history
 - `GET /analyses` - get all Firebase analyses
 - `GET /analyses/{id}` - get specific analysis
 - `PUT /analyses/{id}` - update analysis
 - `DELETE /analyses/{id}` - delete analysis
+- `GET /stats` - simple stats (total analyses count)
 
-## Authentication
-
-Get a Firebase ID token, then use it in the Authorization header:
+### Example Usage
 
 ```bash
-curl http://127.0.0.1:8000/me -H "Authorization: Bearer YOUR_TOKEN"
+# Health check
+curl http://localhost:8000/
+
+# Analyze text
+curl -X POST http://localhost:8000/predict/text -F "prompt=I ate salad and chicken"
+
+# Upload image
+curl -X POST http://localhost:8000/predict/image -F "file=@meal.jpg"
+
+# Get history
+curl http://localhost:8000/history
+
+# Get stats
+curl http://localhost:8000/stats
 ```
 
 ## Architecture
@@ -38,7 +53,8 @@ curl http://127.0.0.1:8000/me -H "Authorization: Bearer YOUR_TOKEN"
 - **Stage 4**: SQLite persistence + `/history` endpoint
 - **Stage 5**: Firebase Firestore integration
 - **Stage 6**: RabbitMQ worker for async post-processing
-- **Stage 7**: Firebase Auth on all endpoints
+
+- **Stage 7**: User authentication (still not implemented)
 
 ## Setup
 
@@ -47,7 +63,32 @@ Files you need:
 - `docker-compose.yml` - runs API, worker, RabbitMQ
 - `app/` - main code and services
 
+Env quickstart (create a `.env` or export vars):
+
+```bash
+export FIREBASE_PROJECT_ID=milo-xxxxx
+export RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+export QUEUE_NAME=postprocess
+```
+
 Services:
 - `milo-api` - FastAPI on port 8000
 - `milo-worker` - processes RabbitMQ messages
 - `rabbitmq` - message broker (management UI on 15672)
+
+## Run tests
+
+```bash
+# Inside container
+docker-compose exec milo-api python -m pytest -q
+
+# Or locally (need Python 3.11)
+pytest -q
+```
+
+## Notes
+
+- All API endpoints are open (Stage 7 authentication not implemented)
+- Uses SQLite for local persistence and Firebase Firestore for cloud storage
+- RabbitMQ handles async post-processing between services
+- Test coverage includes predict endpoints and history.
