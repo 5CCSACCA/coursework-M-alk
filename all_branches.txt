@@ -1,0 +1,6 @@
+* main                                                    9e84e90 [origin/main] merge: integrate stages 1-6 implementation into main
+  remotes/origin/HEAD                                     -> origin/main
+  remotes/origin/feature/enhanced-food-classification     36330a0 Stage 5: Integrate Firebase storage and add endpoints for update and delete
+  remotes/origin/feature/stage4-5-sqlite-history-firebase a396048 Stage 6: add RabbitMQ post-processing service and Docker Compose orchestration
+  remotes/origin/feature/stage7-auth                      13fa6da feat:(Authentication) added Firebase ID token authentication for secured endpoints
+  remotes/origin/main                                     9e84e90 merge: integrate stages 1-6 implementation into main
