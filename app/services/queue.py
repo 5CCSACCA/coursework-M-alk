@@ -1,3 +1,4 @@
+# Review: this module provides functionality to publish messages to a RabbitMQ queue. It looks good overall. Please provide proper code documentation for the functions.
 import json
 import os
 import pika

@@ -1,3 +1,4 @@
+# Review: This compose file sets up a RabbitMQ service with management UI, a Milo API service that depends on RabbitMQ, and a Milo worker service that also depends on RabbitMQ. Health checks are included to ensure services are running properly. I imagine that the Milo API service is the vision system. It looks good overall.
 services:
   rabbitmq:
     image: rabbitmq:3-management

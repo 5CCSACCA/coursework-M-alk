@@ -1,3 +1,4 @@
+# Review: this module implements a RabbitMQ worker that listens for messages on a specified queue, it processes each message to perform post-processing based on the type of data (image or text), and updates a Firebase document with the results (in principle). It properly handles errors and acknowledges messages to ensure reliable processing. However, it would be good to document the code properly for better maintainability.
 import json
 import os
 import time

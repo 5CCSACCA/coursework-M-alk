@@ -1,1 +1,6 @@
 These are the extra review notes apart from the code.
+Gitflow: this repository should be using gitflow branching model. However, I can only see the main and feature branches. Please create develop, release, and hotfix branches as per gitflow conventions.
+Compose: The compose constructs satisfactorily, although you will need to keep the microservices in different folders. Also, I image according to the current functionality the bitnet and firebase are still pending to be added.
+API: The API looks good, but I'm not completely sure what the analysis is for. Please, provide examples. In general I like that you employ the different request methods (GET, POST, PUT, DELETE) correctly.
+In general I can see that the Firebase and BitNet service are part of the code, but their functionality is not yet implemented. Please, check these parts. Otherwise, the code looks good to me.
+

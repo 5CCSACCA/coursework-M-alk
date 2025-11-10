@@ -1,3 +1,5 @@
+# Review: This module provides functions to initialize a SQLite database, it allows saving detection entries and retrieving the history of detections. This part might be connected with the history endpoint in the API. It looks good and modular. Please, provide proper code documentation.
+
 import sqlite3
 from datetime import datetime
 import json

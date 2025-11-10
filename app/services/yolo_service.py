@@ -1,3 +1,4 @@
+# Review: this module performs object detection using YOLOv11 and classifies food items as healthy or unhealthy. In general is well-structured and clear. Also, it works properly for its intended purpose. It would be beneficial to include more comments explaining the logic behind food classification and nutrition advice generation for better maintainability. Maybe also add some examples including images. 
 from ultralytics import YOLO
 from PIL import Image
 import io, os

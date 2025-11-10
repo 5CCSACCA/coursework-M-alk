@@ -1,3 +1,4 @@
+# Review: this dockerfile sets up an API. It looks good, however, it should be in a subdirectory instead of the root. This will keep all the microservice files organized.
 FROM python:3.11-slim
 
 WORKDIR /app
