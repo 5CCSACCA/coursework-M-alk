@@ -26,3 +26,12 @@ BitNet/
 *.ggml
 yolo11n.pt
 *.pt
+
+# Test files
+test_image.jpg
+test_image.jpeg
+test_image.png
+
+# Data
+data/
+*.db

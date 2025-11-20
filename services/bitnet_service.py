@@ -5,12 +5,14 @@ BITNET_URL = os.getenv("BITNET_URL", "http://localhost:8080/completion")
 
 def analyze_text(prompt: str):
     try:
+        full_prompt = f"Answer the following question directly and concisely.\n\nQuestion: {prompt}\n\nAnswer:"
+        
         response = requests.post(
             BITNET_URL,
             json={
-                "prompt": prompt,
-                "n_predict": 10,  # Even fewer tokens
-                "temperature": 0.6
+                "prompt": full_prompt,
+                "n_predict": 15,
+                "temperature": 0.7
             },
             timeout=60
         )

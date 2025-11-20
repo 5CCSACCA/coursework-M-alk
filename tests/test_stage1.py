@@ -1,27 +1,27 @@
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from services.yolo_service import detect_objects
 from services.bitnet_service import analyze_text
+import json
+import time
 
+# Test YOLO
+print("=== YOLO Detection ===")
+with open("test_image.jpeg", "rb") as f:
+    yolo_result = detect_objects(f.read())
 
+print(json.dumps(yolo_result, indent=2))
+print()
 
-print("=== Testing YOLO ===")
-try:
-    test_image_path = os.path.join(os.path.dirname(__file__), "..", "test_image.jpg")
-    with open(test_image_path, "rb") as f:
-        yolo_result = detect_objects(f.read())
-    print("YOLO Result:")
-    print(yolo_result)
-    print()
-except FileNotFoundError:
-    print("error: test_image.jpg not found")
+# Test BitNet
+print("=== BitNet Analysis ===")
+foods = list(set([d["label"] for d in yolo_result["detections"]]))
+question = f"Are {', '.join(foods)} healthy or unhealthy foods?"
 
-# Testing BitNet
-print("=== Testing BitNet ===")
-print(analyze_text("Explain why fruits are healthy?"))
+print(f"Question: {question}")
+start = time.time()
+result = analyze_text(question)
 
-
-print("=== Test Complete ===")
-
+print(f"Answer: {result['output']}")
+print(f"Time: {time.time() - start:.2f}s")
