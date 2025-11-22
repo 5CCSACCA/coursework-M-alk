@@ -30,3 +30,4 @@ def analyze_text(prompt: str):
         return {"input": prompt, "output": "BitNet server not running", "model": "fallback"}
     except Exception as e:
         return {"input": prompt, "output": f"Error: {str(e)}", "model": "fallback"}
+

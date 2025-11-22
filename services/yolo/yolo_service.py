@@ -29,3 +29,4 @@ def detect_objects(image_bytes: bytes):
         "detections": detections,
         "total_objects": len(detections)
     }
+
