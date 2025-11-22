@@ -1,25 +1,49 @@
 #!/bin/bash
+set -e
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BITNET_DIR="$PROJECT_DIR/BitNet"
-MODEL_PATH="$BITNET_DIR/models/BitNet-b1.58-2B-4T/ggml-model-i2_s.gguf"
-SERVER_PORT="${BITNET_SERVER_PORT:-8080}"
-SERVER_THREADS="${BITNET_SERVER_THREADS:-4}"
-SERVER_CTX_SIZE="${BITNET_SERVER_CTX_SIZE:-1024}"
+BITNET_DIR="BitNet"
+MODEL_DIR="models/BitNet-b1.58-2B-4T"
+MODEL_FILE="$MODEL_DIR/ggml-model-i2_s.gguf"
 
-if [ ! -f "$MODEL_PATH" ]; then
-    echo "Error: Model not found at $MODEL_PATH"
-    exit 1
-fi
+echo "=== BitNet Server Setup ==="
 
-if [ ! -f "$BITNET_DIR/build/bin/llama-server" ]; then
-    echo "Error: BitNet server binary not found. Please build it first."
-    exit 1
+if [ ! -d "$BITNET_DIR" ]; then
+    echo "Cloning BitNet repo..."
+    git clone --recursive https://github.com/microsoft/BitNet.git
+    echo "✓ Cloned"
+else
+    echo "✓ BitNet repo exists"
 fi
 
 cd "$BITNET_DIR"
-echo "Starting BitNet server on http://localhost:$SERVER_PORT"
-echo "Model: $MODEL_PATH"
-echo ""
-python run_inference_server.py -m "$MODEL_PATH" --port "$SERVER_PORT" -t "$SERVER_THREADS" -c "$SERVER_CTX_SIZE"
 
+if [ ! -f ".deps_installed" ]; then
+    echo "Installing dependencies..."
+    pip install -q huggingface-hub requests
+    touch .deps_installed
+    echo "✓ Installed"
+else
+    echo "✓ Dependencies OK"
+fi
+
+if [ ! -f "$MODEL_FILE" ]; then
+    echo "Downloading model (~1.2GB)..."
+    mkdir -p "$MODEL_DIR"
+    huggingface-cli download microsoft/BitNet-b1.58-2B-4T-gguf \
+        ggml-model-i2_s.gguf \
+        --local-dir "$MODEL_DIR" \
+        --local-dir-use-symlinks False
+    echo "✓ Downloaded"
+else
+    echo "✓ Model exists"
+fi
+
+echo "Setting up i2_s quantization..."
+python3 setup_env.py -md "$MODEL_DIR" -q i2_s
+
+echo ""
+echo "Starting BitNet server on http://localhost:8080"
+echo "Press Ctrl+C to stop"
+echo ""
+
+python3 run_inference_server.py -m "$MODEL_FILE" --port 8080

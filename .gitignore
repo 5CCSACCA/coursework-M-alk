@@ -20,17 +20,15 @@ firebase-service-account*.json
 # Logs
 *.log
 
-# Models
-BitNet/
+# Models & BitNet repo
+/BitNet/
+/models/
 *.gguf
 *.ggml
 yolo11n.pt
 *.pt
 
-# Test files
-test_image.jpg
-test_image.jpeg
-test_image.png
+# Test files (keep test_image.jpeg for demo)
 
 # Data
 data/
