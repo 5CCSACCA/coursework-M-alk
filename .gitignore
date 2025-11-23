@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 venv/
 .env
+.pytest_cache/
 
 # IDE
 .vscode/
@@ -19,6 +20,14 @@ firebase-service-account*.json
 
 # Logs
 *.log
+logs/
+
+# Build artifacts
+build/
+*.o
+*.so
+*.dylib
+temp_*/
 
 # Models
 BitNet/

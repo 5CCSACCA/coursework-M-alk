@@ -12,7 +12,8 @@ def _truncate_at_sentence(text: str) -> str:
 
 def analyze_text(prompt: str):
     try:
-        full_prompt = f"Answer the question briefly.\nQ: {prompt}\nA:"
+        # Use simple, direct prompt format without Q:/A: to avoid question-generation loops
+        full_prompt = f"Answer the following question in one or two sentences:\n{prompt}\n"
         
         response = requests.post(
             BITNET_URL,
@@ -20,7 +21,7 @@ def analyze_text(prompt: str):
                 "prompt": full_prompt,
                 "n_predict": 50,
                 "temperature": 0.7,
-                "stop": ["\n\n", "Q:", "\nQ"]
+                "stop": ["\n\n"]
             },
             timeout=30
         )

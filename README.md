@@ -1,155 +1,195 @@
-# Milo AI Prediction Model
+# Milo AI - Cloud Computing Coursework
 
 **Student:** Mohamed Ali Khalifa Alketbi  
 **ID:** K22056537  
 **Repository:** https://github.com/5CCSACCA/coursework-M-alk.git
 
+---
+
 ## Overview
 
-This project implements Stage 1 and Stage 2. Stage 1 has two models working together - YOLO for object detection and BitNet for text analysis. Both use default parameters.
+Milo AI is a cloud-based SaaS application combining two AI models:
+- **YOLO (YOLOv11n)** - Object detection in images
+- **BitNet (2B parameters)** - Text generation with LLM
 
-## Models
+The system exposes both models through a REST API with FastAPI, containerized with Docker, and designed for CPU-only environments (4 cores, 16GB RAM).
 
-- **YOLO (YOLOv11n)**: Detects objects in images
-- **BitNet (Microsoft BitNet-b1.58-2B-4T)**: Text generation via HTTP API
+---
 
-## Project Structure
+## Quick Start
 
-```
-services/
-├── yolo/
-│   ├── yolo_service.py
-│   └── yolo11n.pt
-└── bitnet/
-    └── bitnet_service.py
+### Prerequisites
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-tests/
-└── test_stage1.py
-
-scripts/
-├── start_bitnet_server.sh
-├── deploy.sh
-└── test_docker.sh
-
-BitNet/              
-├── models/
-└── run_inference_server.py
+# Start BitNet server (required for all stages)
+bash scripts/start_bitnet_server.sh
 ```
 
-## Stage 1
+---
 
-### YOLO Service
+## Stage 1: Local Python Inference
 
-The YOLO service loads the model and processes image bytes:
+**Goal:** Run both models locally with default parameters.
 
-```python
-from ultralytics import YOLO
-model = YOLO("yolo11n.pt")
-
-def detect_objects(image_bytes: bytes):
-    # Returns detections with labels and confidence scores
+### Run Test
+```bash
+python3 tests/test_stage1.py
 ```
 
-Input: Raw image bytes (JPEG, PNG, etc.)  
-Output: JSON with detections list and total count
+### What It Does
+1. YOLO detects objects in `test_image.jpeg` (21 objects: apples, oranges, bananas)
+2. BitNet answers health questions about detected foods
+3. Outputs JSON results with labels, confidence scores, and AI-generated text
 
-Example output:
+### Example Output
 ```json
 {
   "detections": [
     {"label": "apple", "confidence": 0.712},
-    {"label": "orange", "confidence": 0.630},
-    {"label": "banana", "confidence": 0.536}
+    {"label": "orange", "confidence": 0.630}
   ],
-  "total_objects": 3
+  "total_objects": 21
 }
 ```
 
-### BitNet Service
+**Performance:** YOLO ~60ms, BitNet ~3-4s per query
 
-BitNet connects to a server running on localhost:8080. The service sends prompts and gets text responses:
+---
 
-```python
-def analyze_text(prompt: str):
-    # Sends POST request to BitNet server
-    # Returns input, output, and model name
-```
+## Stage 2: Docker Containerization
 
-Input: Text string  
-Output: JSON with input prompt, generated text, and model identifier
+**Goal:** Package the system in Docker with two-command deployment.
 
-Example:
-```
-Input: "Are apples healthy foods?"
-Output: "Apples are generally considered healthy."
-```
+### Two Commands (As Required by Brief)
 
-The service truncates output at sentence boundaries to avoid mid-sentence cuts.
-
-### Running Stage 1
-
+**1. Build:**
 ```bash
-# Start BitNet server first
-bash scripts/start_bitnet_server.sh
-
-# Then run the test
-source venv/bin/activate
-python tests/test_stage1.py
+docker-compose build
 ```
 
-The test script runs YOLO detection on an image, extracts food labels, then asks BitNet about their health impact.
-
-Performance: YOLO takes ~60-80ms, BitNet takes ~3-4s per query.
-
-## Stage 2
-
-Stage 2 containerizes the Python code. The Dockerfile packages YOLO service and BitNet client. BitNet server runs on the host using Python.
-
-The container uses `--network=host` so it can access localhost:8080 where the BitNet server runs. This works on Linux without any special host networking setup.
-
-### Prerequisites
-
-Start the BitNet server before running the container:
-
+**2. Run:**
 ```bash
-bash scripts/start_bitnet_server.sh
+docker-compose up
 ```
 
-### Build
+### What It Does
+- Packages YOLO + BitNet client in lightweight container
+- Container connects to BitNet server on host (keeps image small ~2GB vs 10GB+)
+- Runs the same Stage 1 test inside Docker
+- Outputs detection results and AI responses
 
+### Alternative (Direct Docker)
 ```bash
-docker build -t milo-ai:stage2 .
+# Build
+docker build -t milo-ai:stage2 -f Dockerfile.yolo .
+
+# Run
+docker run --rm --network=host milo-ai:stage2
 ```
 
-### Run
+**Note:** BitNet server must be running on host before starting container.
 
+---
+
+## Stage 3: REST API with FastAPI
+
+**Goal:** Expose both models through REST API endpoints.
+
+### Start API
 ```bash
-docker run --rm --network=host -e BITNET_URL=http://localhost:8080/completion milo-ai:stage2
+bash scripts/start_api.sh
 ```
 
-Or use docker-compose:
+API available at: `http://localhost:8000`
 
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/yolo/detect` | Upload image for object detection |
+| POST | `/bitnet/completion` | Generate text with LLM |
+| GET | `/docs` | Interactive API documentation (Swagger UI) |
+
+### Test API
+
+**Interactive (Browser):**
+```
+http://localhost:8000/docs
+```
+
+**Command Line:**
 ```bash
-docker-compose up --build
+# Health check
+curl http://localhost:8000/health
+
+# YOLO detection
+curl -X POST http://localhost:8000/yolo/detect \
+  -F "file=@test_image.jpeg"
+
+# BitNet text generation
+curl -X POST http://localhost:8000/bitnet/completion \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What is AI?", "n_predict": 30}'
 ```
 
-Or use the deploy script:
-
+### Run All Tests
 ```bash
-bash scripts/deploy.sh
+bash scripts/run_tests.sh
 ```
 
+---
+
+## Project Structure
+
+```
+coursework-MohamedAlketbi/
+├── api/
+│   └── api.py                  # FastAPI unified server
+├── services/
+│   ├── yolo/
+│   │   ├── yolo_service.py     # YOLO detection
+│   │   └── yolo11n.pt          # Model weights (6MB)
+│   └── bitnet/
+│       └── bitnet_service.py   # BitNet client
+├── tests/
+│   ├── test_stage1.py          # Stage 1 tests
+│   ├── test_stage3.py          # API tests
+│   └── test_unified_api.py     # Comprehensive tests
+├── scripts/
+│   ├── start_api.sh            # Start unified API
+│   ├── start_bitnet_server.sh  # Start BitNet server
+│   └── run_tests.sh            # Run all tests
+├── Dockerfile.yolo             # Container definition
+├── docker-compose.yml          # Docker orchestration
+├── requirements.txt            # Python dependencies 
+├── requirements-docker.txt     # Docker dependencies 
+└── README.md
+```
+
+---
 
 ## Dependencies
 
-See `requirements.txt` for Python packages. Main ones:
-- ultralytics (YOLO)
-- torch, torchvision
-- requests (BitNet client)
-- pillow, opencv-python-headless
+**Main packages:**
+- `ultralytics` - YOLO object detection
+- `torch`, `torchvision` - Deep learning framework
+- `fastapi`, `uvicorn` - REST API server
+- `requests` - HTTP client for BitNet
+- `pillow`, `opencv-python-headless` - Image processing
+
+Install all:
+```bash
+pip install -r requirements.txt
+```
+
+---
 
 ## Notes
 
-- BitNet server must be running before Stage 1 or Stage 2 tests
-- The system is designed for 4 vCPU and 16GB RAM constraints
-- BitNet model needs to be downloaded separately (see BitNet/ directory)
+- **CPU Only:** Designed for 4 vCPU, 16GB RAM (no GPU required)
+- **BitNet Server:** Must be running for Stages 1-3 (`bash scripts/start_bitnet_server.sh`)
+- **Mock Mode:** API supports lightweight mock (default) or real BitNet (`BITNET_MOCK=0`)
+- **Model Size:** BitNet model is 1.1GB (not included in Docker image to keep it light)
