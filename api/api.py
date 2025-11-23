@@ -1,7 +1,7 @@
 """
-Milo AI Unified API - Stage 3
+Milo AI Unified API - Stage 4
 
-FastAPI server exposing BitNet and YOLO models.
+FastAPI server exposing BitNet and YOLO models with MongoDB persistence.
 Author: Mohamed Alketbi
 """
 import argparse
@@ -29,6 +29,13 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import YOLO service: {e}")
     YOLO_AVAILABLE = False
+
+try:
+    from services.database.mongo_service import get_db_service
+    DB_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Could not import MongoDB service: {e}")
+    DB_AVAILABLE = False
 
 # Mock mode to keep deployment lightweight
 BITNET_MOCK = os.getenv("BITNET_MOCK", "1") == "1"
@@ -68,6 +75,8 @@ class HealthResponse(BaseModel):
     model_loaded: bool = Field(..., description="BitNet ready")
     llama_server_running: bool = Field(default=False, description="llama-server status")
     yolo_available: bool = Field(default=False, description="YOLO status")
+    database_connected: bool = Field(default=False, description="MongoDB status")
+    database_stats: Optional[Dict[str, Any]] = Field(default=None, description="DB stats")
 
 
 app = FastAPI(
@@ -302,11 +311,21 @@ async def health_check():
         except:
             bitnet_healthy = False
     
+    db_connected = False
+    db_stats = None
+    if DB_AVAILABLE:
+        db_service = get_db_service()
+        db_connected = db_service.is_connected()
+        if db_connected:
+            db_stats = db_service.get_stats()
+    
     return HealthResponse(
         status="ok" if (bitnet_running or bitnet_healthy or BITNET_MOCK) and YOLO_AVAILABLE else "degraded",
         model_loaded=(bitnet_running or bitnet_healthy or BITNET_MOCK),
         llama_server_running=(bitnet_running or bitnet_healthy or BITNET_MOCK),
-        yolo_available=YOLO_AVAILABLE
+        yolo_available=YOLO_AVAILABLE,
+        database_connected=db_connected,
+        database_stats=db_stats
     )
 
 
@@ -318,12 +337,27 @@ async def completion(request: CompletionRequest):
     if BITNET_MOCK:
         content = f"Mock response for: {request.prompt[:120]}"
         tokens = len(content.split())
-        return CompletionResponse(
+        response_data = CompletionResponse(
             content=content,
             stop=True,
             generated_text=content,
             tokens_predicted=tokens
         )
+        
+        # Log to MongoDB
+        if DB_AVAILABLE:
+            try:
+                db_service = get_db_service()
+                db_service.log_request(
+                    service="bitnet",
+                    request_data=request.dict(),
+                    response_data=response_data.dict(),
+                    status="success"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log request to DB: {e}")
+        
+        return response_data
     
     try:
         import requests
@@ -369,12 +403,27 @@ async def completion(request: CompletionRequest):
         tokens = result.get("tokens_predicted", len(content.split()))
         if not isinstance(tokens, int): tokens = len(content.split())
         
-        return CompletionResponse(
+        response_data = CompletionResponse(
             content=content,
             stop=result.get("stop", True),
             generated_text=content,
             tokens_predicted=tokens
         )
+        
+        # Log to MongoDB
+        if DB_AVAILABLE:
+            try:
+                db_service = get_db_service()
+                db_service.log_request(
+                    service="bitnet",
+                    request_data=request.dict(),
+                    response_data=response_data.dict(),
+                    status="success"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log request to DB: {e}")
+        
+        return response_data
 
     except HTTPException:
         raise
@@ -398,11 +447,102 @@ async def detect_objects_endpoint(file: UploadFile = File(...)):
         
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
+        
+        # Log to MongoDB
+        if DB_AVAILABLE:
+            try:
+                db_service = get_db_service()
+                db_service.log_request(
+                    service="yolo",
+                    request_data={"filename": file.filename, "content_type": file.content_type},
+                    response_data=result,
+                    status="success"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log request to DB: {e}")
             
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"YOLO error: {e}")
         raise HTTPException(status_code=500, detail=f"YOLO processing error: {str(e)}")
+
+
+@app.get("/requests", tags=["Database"])
+async def get_all_requests(
+    service: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0
+):
+    """
+    Get past requests from database.
+    
+    Args:
+        service: Filter by service (bitnet or yolo), optional
+        limit: Max results (default 50)
+        skip: Skip N results for pagination (default 0)
+    """
+    if not DB_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Database service not available"
+        )
+    
+    try:
+        db_service = get_db_service()
+        
+        if service and service not in ["bitnet", "yolo"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Service must be 'bitnet' or 'yolo'"
+            )
+        
+        requests = db_service.get_requests(
+            service=service,
+            limit=min(limit, 100),  # Cap at 100
+            skip=skip
+        )
+        
+        return {
+            "total": len(requests),
+            "service_filter": service,
+            "limit": limit,
+            "skip": skip,
+            "requests": requests
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving requests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/requests/{request_id}", tags=["Database"])
+async def get_request_by_id(request_id: str):
+    """Get a specific request by ID."""
+    if not DB_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Database service not available"
+        )
+    
+    try:
+        db_service = get_db_service()
+        request = db_service.get_request_by_id(request_id)
+        
+        if not request:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Request {request_id} not found"
+            )
+        
+        return request
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def main():

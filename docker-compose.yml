@@ -6,6 +6,8 @@ services:
     container_name: yolo-service
     environment:
       - BITNET_URL=http://host.docker.internal:8080/completion
+      - MONGO_URI=mongodb+srv://milo_user:strongpassword123@cluster0.o4dzo0k.mongodb.net/?appName=Cluster0
+      - MONGO_DB_NAME=milo_ai
     volumes:
       - ./test_image.jpeg:/app/test_image.jpeg:ro
     extra_hosts:

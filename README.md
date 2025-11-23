@@ -142,6 +142,126 @@ bash scripts/run_tests.sh
 
 ---
 
+## Stage 4: MongoDB Persistence
+
+**Goal:** Store all requests in MongoDB and provide endpoints to retrieve past interactions.
+
+### MongoDB Setup
+
+The system uses MongoDB Atlas for cloud database storage. Connection details are configured via environment variables:
+
+```bash
+# MongoDB connection string (default provided)
+export MONGO_URI="mongodb+srv://milo_user:strongpassword123@cluster0.o4dzo0k.mongodb.net/?appName=Cluster0"
+```
+
+### Features
+
+1. **Automatic Request Logging**
+   - Every BitNet and YOLO request is logged to MongoDB
+   - Stores request data, response data, timestamp, and status
+   - Non-blocking (failures don't affect API response)
+
+2. **Request Retrieval Endpoints**
+   - Get all requests (with pagination)
+   - Filter by service (bitnet or yolo)
+   - Retrieve specific request by ID
+
+3. **Database Statistics**
+   - Health endpoint shows DB connection status
+   - Total request counts per service
+
+### New Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/requests` | Get all past requests (paginated) |
+| GET | `/requests?service=bitnet` | Filter requests by service |
+| GET | `/requests/{id}` | Get specific request by ID |
+
+### Query Parameters
+
+- `service` (optional): Filter by "bitnet" or "yolo"
+- `limit` (default 50): Max results per page
+- `skip` (default 0): Skip N results (pagination)
+
+### Test Stage 4
+
+```bash
+# Start API with database support
+bash scripts/start_api.sh
+
+# Run Stage 4 tests
+python3 tests/test_stage4.py
+```
+
+### Example Usage
+
+**Get all requests:**
+```bash
+curl http://localhost:8000/requests?limit=10
+```
+
+**Get BitNet requests only:**
+```bash
+curl http://localhost:8000/requests?service=bitnet&limit=5
+```
+
+**Get specific request:**
+```bash
+curl http://localhost:8000/requests/6745abc123def456789
+```
+
+**Check database stats:**
+```bash
+curl http://localhost:8000/health | jq '.database_stats'
+```
+
+### Example Response
+
+```json
+{
+  "total": 2,
+  "service_filter": "bitnet",
+  "limit": 10,
+  "skip": 0,
+  "requests": [
+    {
+      "_id": "6745abc123def456789",
+      "service": "bitnet",
+      "timestamp": "2024-11-23T10:30:45.123456",
+      "request": {
+        "prompt": "What is AI?",
+        "n_predict": 30
+      },
+      "response": {
+        "content": "AI is artificial intelligence...",
+        "tokens_predicted": 28
+      },
+      "status": "success"
+    }
+  ]
+}
+```
+
+### Database Schema
+
+**Collection:** `requests`
+
+**Document Structure:**
+```javascript
+{
+  _id: ObjectId,
+  service: "bitnet" | "yolo",
+  timestamp: ISODate,
+  request: Object,      // Original request data
+  response: Object,     // Model response data
+  status: "success" | "error"
+}
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -152,11 +272,15 @@ coursework-MohamedAlketbi/
 │   ├── yolo/
 │   │   ├── yolo_service.py     # YOLO detection
 │   │   └── yolo11n.pt          # Model weights (6MB)
-│   └── bitnet/
-│       └── bitnet_service.py   # BitNet client
+│   ├── bitnet/
+│   │   └── bitnet_service.py   # BitNet client
+│   └── database/
+│       ├── __init__.py
+│       └── mongo_service.py    # MongoDB operations
 ├── tests/
 │   ├── test_stage1.py          # Stage 1 tests
 │   ├── test_stage3.py          # API tests
+│   ├── test_stage4.py          # Database tests
 │   └── test_unified_api.py     # Comprehensive tests
 ├── scripts/
 │   ├── start_api.sh            # Start unified API
@@ -177,6 +301,7 @@ coursework-MohamedAlketbi/
 - `ultralytics` - YOLO object detection
 - `torch`, `torchvision` - Deep learning framework
 - `fastapi`, `uvicorn` - REST API server
+- `pymongo` - MongoDB database driver
 - `requests` - HTTP client for BitNet
 - `pillow`, `opencv-python-headless` - Image processing
 
@@ -190,6 +315,8 @@ pip install -r requirements.txt
 ## Notes
 
 - **CPU Only:** Designed for 4 vCPU, 16GB RAM (no GPU required)
-- **BitNet Server:** Must be running for Stages 1-3 (`bash scripts/start_bitnet_server.sh`)
+- **BitNet Server:** Must be running for Stages 1-4 (`bash scripts/start_bitnet_server.sh`)
 - **Mock Mode:** API supports lightweight mock (default) or real BitNet (`BITNET_MOCK=0`)
 - **Model Size:** BitNet model is 1.1GB (not included in Docker image to keep it light)
+- **Database:** MongoDB Atlas cloud database for request persistence (Stage 4+)
+- **Non-blocking:** Database failures don't affect API responses
