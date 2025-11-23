@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY services/ /app/services/
+COPY tests/ /app/tests/
+COPY services/yolo/yolo11n.pt /app/yolo11n.pt
+COPY test_image.jpeg /app/test_image.jpeg
+
+ENV BITNET_URL=http://localhost:8080/completion
+
+CMD ["python", "tests/test_stage1.py"]

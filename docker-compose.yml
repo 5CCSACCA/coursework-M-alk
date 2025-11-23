@@ -1,0 +1,12 @@
+services:
+  yolo:
+    build:
+      context: .
+      dockerfile: Dockerfile.yolo
+    container_name: yolo-service
+    environment:
+      - BITNET_URL=http://host.docker.internal:8080/completion
+    volumes:
+      - ./test_image.jpeg:/app/test_image.jpeg:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

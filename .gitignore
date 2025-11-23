@@ -26,6 +26,7 @@ BitNet/
 *.ggml
 yolo11n.pt
 *.pt
+Video
 
 # Test files
 test_image.jpg
@@ -35,3 +36,6 @@ test_image.png
 # Data
 data/
 *.db
+
+# Video
+Video/
