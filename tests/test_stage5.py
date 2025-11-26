@@ -248,8 +248,7 @@ def test_yolo_auto_store():
     """Test automatic Firebase storage on YOLO request."""
     print("\n=== Testing Automatic Firebase Storage (YOLO) ===")
     
-    # Create dummy image
-    test_image = PROJECT_ROOT / "test_image.jpeg"
+    test_image = Path(__file__).parent / "test_image.jpeg"
     
     if not test_image.exists():
         print("⚠ test_image.jpeg not found, skipping YOLO test")

@@ -70,10 +70,11 @@ services:
       - BITNET_URL=http://bitnet-service:8080
       - YOLO_SERVICE_URL=http://yolo-service:8001
       - FIREBASE_SERVICE_URL=http://firebase-service:8002
+      - FIREBASE_CREDENTIALS=/app/firebase-key.json
       - MONGO_URI=mongodb+srv://milo_user:strongpassword123@cluster0.o4dzo0k.mongodb.net/?appName=Cluster0
       - MONGO_DB_NAME=milo_ai
     volumes:
-      - ./test_image.jpeg:/app/test_image.jpeg:ro
+      - ./tests/test_image.jpeg:/app/test_image.jpeg:ro
       - ./firebase-key.json:/app/firebase-key.json:ro
     networks:
       - milo-network

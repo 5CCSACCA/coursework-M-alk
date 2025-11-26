@@ -67,7 +67,7 @@ curl -X POST http://localhost:8000/bitnet/completion \
 
 ```bash
 curl -X POST http://localhost:8000/yolo/detect \
-  -F "file=@test_image.jpeg"
+  -F "file=@tests/test_image.jpeg"
 ```
 
 ### Get Request History

@@ -123,7 +123,7 @@ def test_yolo_request_logging():
     try:
         import requests
         
-        test_image = PROJECT_ROOT / "test_image.jpeg"
+        test_image = Path(__file__).parent / "test_image.jpeg"
         
         if not test_image.exists():
             print("✗ test_image.jpeg not found")

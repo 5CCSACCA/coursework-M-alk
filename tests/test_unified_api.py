@@ -10,7 +10,7 @@ import pytest
 import requests
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
-TEST_IMAGE = os.getenv("TEST_IMAGE", "test_image.jpeg")
+TEST_IMAGE = os.getenv("TEST_IMAGE", os.path.join(os.path.dirname(__file__), "test_image.jpeg"))
 DEFAULT_TIMEOUT = 5
 
 
