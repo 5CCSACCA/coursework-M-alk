@@ -104,11 +104,4 @@ The Gateway provides:
 docker-compose down
 ```
 
-## Notes
-
-- This stage does NOT include:
-  - MongoDB/Firebase integration (Stage 4-5)
-  - Request logging
-  - Output storage
-
 - For database integration, see Stage 4+ branches.
