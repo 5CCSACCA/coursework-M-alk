@@ -35,8 +35,9 @@ yolo11n.pt
 Video
 
 # BitNet model directory (keep structure, ignore files)
-bitnet/model/*
-!bitnet/model/.gitkeep
+bitnet-service/model/*
+!bitnet-service/model/.gitkeep
+!bitnet-service/model/README.md
 
 # Test files
 test_image.jpg
