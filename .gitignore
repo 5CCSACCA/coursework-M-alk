@@ -9,7 +9,6 @@ venv/
 # IDE
 .vscode/
 .idea/
-.cursor/
 
 # OS
 .DS_Store
