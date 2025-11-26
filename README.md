@@ -86,11 +86,3 @@ Both services communicate via Docker's internal network (`milo-network`).
 ```bash
 docker-compose down
 ```
-
-## Notes
-
-- This stage does NOT include:
-  - Unified API Gateway (Stage 3)
-  - MongoDB/Firebase integration (Stage 4-5)
-
-- For API Gateway integration, see Stage 3+ branches.
