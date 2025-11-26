@@ -9,7 +9,6 @@ venv/
 # IDE
 .vscode/
 .idea/
-.cursor/
 
 # OS
 .DS_Store
@@ -34,7 +33,6 @@ yolo11n.pt
 *.pt
 Video
 
-# BitNet model directory (keep structure, ignore files)
 bitnet-service/model/*
 !bitnet-service/model/.gitkeep
 !bitnet-service/model/README.md
