@@ -1,14 +1,94 @@
 services:
-  yolo:
+  bitnet:
+    build: ./bitnet-service
+    container_name: bitnet-service
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./bitnet-service/model:/BitNet/model
+    networks:
+      - milo-network
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import requests; requests.get('http://localhost:8080/health', timeout=2)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  yolo-service:
     build:
       context: .
-      dockerfile: Dockerfile.yolo
+      dockerfile: yolo-service/Dockerfile
     container_name: yolo-service
+    ports:
+      - "8001:8001"
+    networks:
+      - milo-network
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import requests; requests.get('http://localhost:8001/health', timeout=2)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  firebase-service:
+    build:
+      context: .
+      dockerfile: firebase-service/Dockerfile
+    container_name: firebase-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./firebase-key.json:/app/firebase-key.json:ro
+    networks:
+      - milo-network
     environment:
-      - BITNET_URL=http://host.docker.internal:8080/completion
+      - FIREBASE_CREDENTIALS=/app/firebase-key.json
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import requests; requests.get('http://localhost:8002/health', timeout=2)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      bitnet:
+        condition: service_healthy
+      yolo-service:
+        condition: service_healthy
+      firebase-service:
+        condition: service_healthy
+    environment:
+      - BITNET_MOCK=0
+      - BITNET_URL=http://bitnet-service:8080
+      - YOLO_SERVICE_URL=http://yolo-service:8001
+      - FIREBASE_SERVICE_URL=http://firebase-service:8002
       - MONGO_URI=mongodb+srv://milo_user:strongpassword123@cluster0.o4dzo0k.mongodb.net/?appName=Cluster0
       - MONGO_DB_NAME=milo_ai
     volumes:
       - ./test_image.jpeg:/app/test_image.jpeg:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - ./firebase-key.json:/app/firebase-key.json:ro
+    networks:
+      - milo-network
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import requests; requests.get('http://localhost:8000/health', timeout=2)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  milo-network:
+    driver: bridge
+    name: milo-network
+
+volumes:
+  firebase-keys:
+    driver: local

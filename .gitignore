@@ -15,8 +15,6 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Firebase
-firebase-service-account*.json
 
 # Logs
 *.log
@@ -30,12 +28,15 @@ build/
 temp_*/
 
 # Models
-BitNet/
 *.gguf
 *.ggml
 yolo11n.pt
 *.pt
 Video
+
+# BitNet model directory (keep structure, ignore files)
+bitnet/model/*
+!bitnet/model/.gitkeep
 
 # Test files
 test_image.jpg
