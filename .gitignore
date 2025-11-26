@@ -49,3 +49,12 @@ data/
 
 # Video
 Video/
+
+# Firebase credentials
+firebase-key.json
+
+# Firebase credentials
+firebase-key.json
+*.json
+!package.json
+!package-lock.json
