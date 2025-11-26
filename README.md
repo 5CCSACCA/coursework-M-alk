@@ -1,98 +1,89 @@
-# Milo AI 
+# Milo AI - Stage 1: Local Inference
 
 ## Overview
 
-This project sets up microservices using Docker Compose:
-
-**BitNet Service** - Runs BitNet LLM model, exposes port 8080  
-**YOLO Service** - Object detection, exposes port 8001  
-**Firebase Service** - CRUD operations, exposes port 8002  
-**API Gateway** - Unified FastAPI gateway, exposes port 8000
+Stage 1 focuses on running BitNet (Text Generation) and YOLO (Object Detection) models locally without containers or API servers.
 
 ## Project Structure
 
 ```
 coursework-MohamedAlketbi/
-├── api-gateway/          # FastAPI gateway
-│   ├── app/
-│   ├── Dockerfile
-│   └── requirements.txt
-├── bitnet-service/       # BitNet microservice
-│   ├── model/
-│   └── Dockerfile
-├── yolo-service/         # YOLO microservice
-│   ├── app/
-│   ├── model/
-│   └── Dockerfile
-├── firebase-service/     # Firebase microservice
-│   ├── app/
-│   └── Dockerfile
-└── docker-compose.yml
+├── services/
+│   └── yolo/
+│       ├── yolo_service.py      # YOLO detection logic
+│       └── yolo11n.pt           # YOLO model file
+├── bitnet-service/
+│   └── model/
+│       └── ggml-model-i2_s.gguf # BitNet model
+├── requirements.txt
+├── .gitignore
+└── README.md
 ```
 
 ## Setup Instructions
 
-### 1. Download the BitNet Model
+### 1. Create Virtual Environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Download Models
+
+#### YOLO Model
+
+The YOLO model should already be in `services/yolo/yolo11n.pt`. If missing, Ultralytics will auto-download it on first use.
+
+#### BitNet Model
 
 ```bash
 cd bitnet-service/model
 wget https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/main/ggml-model-i2_s.gguf
 ```
 
-### 2. Build and Start Services
-
-```bash
-docker-compose build
-docker-compose up
-```
-
-### 3. Access Services
-- Main http://localhost:8000/docs
-- API Gateway: http://localhost:8000
-- BitNet: http://localhost:8080
-- YOLO: http://localhost:8001
-- Firebase: http://localhost:8002
-
-## API Usage
-
-### BitNet Text Generation
-
-```bash
-curl -X POST http://localhost:8000/bitnet/completion \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello", "n_predict": 50}'
-```
+## Usage
 
 ### YOLO Object Detection
 
-```bash
-curl -X POST http://localhost:8000/yolo/detect \
-  -F "file=@tests/test_image.jpeg"
+```python
+from services.yolo.yolo_service import detect_objects
+
+# Read image
+with open("path/to/image.jpg", "rb") as f:
+    image_bytes = f.read()
+
+# Detect objects
+result = detect_objects(image_bytes)
+print(result)
+# Output: {"detections": [...], "total_objects": 5}
 ```
 
-### Get Request History
+### BitNet Text Generation
 
-```bash
-curl http://localhost:8000/requests
-```
+For BitNet, you'll need to set up the BitNet inference server separately or use the BitNet repository directly.
 
-### Firebase Outputs
+## Requirements
 
-```bash
-curl http://localhost:8000/firebase/outputs
-```
+- Python 3.11+
+- PyTorch
+- Ultralytics (for YOLO)
+- PIL/Pillow
 
-## How It Works
+See `requirements.txt` for full dependency list.
 
-The API Gateway routes requests to microservices:
-- BitNet → `http://bitnet-service:8080/completion`
-- YOLO → `http://yolo-service:8001/detect`
-- Firebase → `http://firebase-service:8002/outputs`
+## Notes
 
-Services communicate via Docker network (`milo-network`).
+- This stage does NOT include:
+  - Docker containers
+  - FastAPI servers
+  - MongoDB/Firebase integration
+  - Unified API Gateway
 
-## Stopping Services
-
-```bash
-docker-compose down
-```
+- For containerized deployment, see Stage 2+ branches.
