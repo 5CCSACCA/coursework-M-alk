@@ -77,13 +77,3 @@ For BitNet, you'll need to set up the BitNet inference server separately or use 
 - PIL/Pillow
 
 See `requirements.txt` for full dependency list.
-
-## Notes
-
-- This stage does NOT include:
-  - Docker containers
-  - FastAPI servers
-  - MongoDB/Firebase integration
-  - Unified API Gateway
-
-- For containerized deployment, see Stage 2+ branches.
