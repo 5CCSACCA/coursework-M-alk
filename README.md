@@ -1,33 +1,30 @@
-# Milo AI 
+# Milo AI - Stage 2: Containerization
 
 ## Overview
 
-This project sets up microservices using Docker Compose:
-
-**BitNet Service** - Runs BitNet LLM model, exposes port 8080  
-**YOLO Service** - Object detection, exposes port 8001  
-**Firebase Service** - CRUD operations, exposes port 8002  
-**API Gateway** - Unified FastAPI gateway, exposes port 8000
+Stage 2 focuses on containerizing BitNet (Text Generation) and YOLO (Object Detection) services using Docker and Docker Compose.
 
 ## Project Structure
 
 ```
 coursework-MohamedAlketbi/
-├── api-gateway/          # FastAPI gateway
+├── bitnet-service/
+│   ├── Dockerfile              # BitNet container definition
 │   ├── app/
-│   ├── Dockerfile
-│   └── requirements.txt
-├── bitnet-service/       # BitNet microservice
+│   │   └── bitnet_server.py    # BitNet server placeholder
+│   └── model/
+│       └── ggml-model-i2_s.gguf # BitNet model
+├── yolo-service/
+│   ├── Dockerfile              # YOLO container definition
+│   ├── app/
+│   │   ├── yolo_service.py     # YOLO detection logic
+│   │   └── yolo_server.py      # FastAPI server for YOLO
 │   ├── model/
-│   └── Dockerfile
-├── yolo-service/         # YOLO microservice
-│   ├── app/
-│   ├── model/
-│   └── Dockerfile
-├── firebase-service/     # Firebase microservice
-│   ├── app/
-│   └── Dockerfile
-└── docker-compose.yml
+│   │   └── yolo11n.pt          # YOLO model
+│   └── requirements.txt        # YOLO service dependencies
+├── docker-compose.yml          # Orchestration (bitnet + yolo only)
+├── .gitignore
+└── README.md
 ```
 
 ## Setup Instructions
@@ -46,53 +43,54 @@ docker-compose build
 docker-compose up
 ```
 
+This will:
+- Build the BitNet image from `bitnet-service/Dockerfile`
+- Build the YOLO image from `yolo-service/Dockerfile`
+- Start both containers
+
 ### 3. Access Services
-- Main http://localhost:8000/docs
-- API Gateway: http://localhost:8000
-- BitNet: http://localhost:8080
-- YOLO: http://localhost:8001
-- Firebase: http://localhost:8002
+
+- **BitNet Service**: http://localhost:8080
+- **YOLO Service**: http://localhost:8001
 
 ## API Usage
 
-### BitNet Text Generation
+### BitNet Health Check
 
 ```bash
-curl -X POST http://localhost:8000/bitnet/completion \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello", "n_predict": 50}'
+curl http://localhost:8080/health
 ```
 
 ### YOLO Object Detection
 
 ```bash
-curl -X POST http://localhost:8000/yolo/detect \
+curl -X POST http://localhost:8001/detect \
   -F "file=@tests/test_image.jpeg"
 ```
 
-### Get Request History
+### YOLO Health Check
 
 ```bash
-curl http://localhost:8000/requests
-```
-
-### Firebase Outputs
-
-```bash
-curl http://localhost:8000/firebase/outputs
+curl http://localhost:8001/health
 ```
 
 ## How It Works
 
-The API Gateway routes requests to microservices:
-- BitNet → `http://bitnet-service:8080/completion`
-- YOLO → `http://yolo-service:8001/detect`
-- Firebase → `http://firebase-service:8002/outputs`
+- **BitNet Service**: Runs the BitNet LLM model inside a Docker container, exposing port 8080 for inference requests.
+- **YOLO Service**: Runs YOLO object detection inside a Docker container, exposing port 8001 with a FastAPI server.
 
-Services communicate via Docker network (`milo-network`).
+Both services communicate via Docker's internal network (`milo-network`).
 
 ## Stopping Services
 
 ```bash
 docker-compose down
 ```
+
+## Notes
+
+- This stage does NOT include:
+  - Unified API Gateway (Stage 3)
+  - MongoDB/Firebase integration (Stage 4-5)
+
+- For API Gateway integration, see Stage 3+ branches.
