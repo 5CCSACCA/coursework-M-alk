@@ -11,9 +11,7 @@ COPY api-gateway/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api-gateway/app/ /app/app/
-COPY services/ /app/services/
 COPY tests/test_image.jpeg /app/test_image.jpeg
-COPY firebase-key.json /app/firebase-key.json
 
 ENV PYTHONPATH=/app
 

@@ -1,15 +1,13 @@
 import logging
 from fastapi import APIRouter, HTTPException, status
 from ..models import CompletionRequest, CompletionResponse
-from ..services import BitNetClient, DatabaseClient, FirebaseClient
+from ..services import BitNetClient
 from ..utils import clean_response, is_low_quality_response
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 bitnet_client = BitNetClient()
-db_client = DatabaseClient()
-firebase_client = FirebaseClient()
 
 
 @router.post("/completion", response_model=CompletionResponse, status_code=200)
@@ -44,20 +42,6 @@ async def completion(request: CompletionRequest):
             stop=result.get("stop", True),
             generated_text=content,
             tokens_predicted=tokens
-        )
-        
-        db_client.log_request(
-            service="bitnet",
-            request_data=request.model_dump(),
-            response_data=response_data.model_dump(),
-            status="success"
-        )
-        
-        firebase_client.create_output(
-            service="bitnet",
-            request_data=request.model_dump(),
-            response_data=response_data.model_dump(),
-            metadata={"mock": bitnet_client.mock_mode}
         )
         
         return response_data
