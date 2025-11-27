@@ -11,6 +11,7 @@ COPY api-gateway/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api-gateway/app/ /app/app/
+COPY database/ /app/database/
 COPY tests/test_image.jpeg /app/test_image.jpeg
 
 ENV PYTHONPATH=/app

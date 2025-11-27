@@ -1,65 +1,72 @@
-# Milo AI - Stage 3: Unified API Gateway
+# Milo AI - Stage 4: MongoDB Integration 
 
 ## Overview
 
-Stage 3 creates a unified FastAPI API Gateway that routes requests to BitNet (Text Generation) and YOLO (Object Detection) microservices.
+Stage 4 adds MongoDB persistence to log all API requests. Users can retrieve their past interactions with the system through GET endpoints.
 
 ## Project Structure
 
 ```
 coursework-MohamedAlketbi/
-├── api-gateway/           # Unified FastAPI Gateway
+├── api-gateway/          # FastAPI Gateway
 │   ├── app/
-│   │   ├── main.py        # FastAPI app entry point
-│   │   ├── models/        # Request/response models
-│   │   ├── routes/        # API endpoints (bitnet, yolo, health)
-│   │   ├── services/      # Service clients
-│   │   └── utils/         # Utility functions
+│   │   ├── routes/       # BitNet, YOLO, Database routes
+│   │   ├── models/       # Request/response models
+│   │   ├── services/     # Service clients (including DatabaseClient)
+│   │   └── utils/        # Utility functions
 │   ├── Dockerfile
 │   └── requirements.txt
-├── bitnet-service/        # BitNet microservice
+├── bitnet-service/       # BitNet microservice
 │   ├── Dockerfile
 │   └── model/
-│       └── ggml-model-i2_s.gguf
-├── yolo-service/          # YOLO microservice
+├── yolo-service/         # YOLO microservice
 │   ├── Dockerfile
-│   ├── app/
-│   │   ├── yolo_service.py
-│   │   └── yolo_server.py
-│   ├── model/
-│   │   └── yolo11n.pt
 │   └── requirements.txt
+├── database/                   # MongoDB 
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── __init__.py
+│   └── mongo_service.py
 ├── docker-compose.yml
 └── README.md
 ```
 
-## Setup Instructions
+## Setup Instructions (Linux VM)
 
-### 1. Download the BitNet Model
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/5CCSACCA/coursework-M-alk.git
+cd coursework-MohamedAlketbi
+```
+
+### 2. Download the BitNet Model
 
 ```bash
 cd bitnet-service/model
 wget https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/main/ggml-model-i2_s.gguf
+cd ../..
 ```
 
-### 2. Build and Start Services
+### 3. Build and Start Services
 
 ```bash
 docker-compose build
 docker-compose up
 ```
 
-This will:
-- Build the BitNet image
-- Build the YOLO image
-- Build the API Gateway image
-- Start all containers
+This will start all services:
+- **MongoDB** (port 27017) - Local database running in Docker
+- **BitNet Service** (port 8080) - Text generation model
+- **YOLO Service** (port 8001) - Object detection model
+- **API Gateway** (port 8000) - Unified API endpoint
 
-### 3. Access Services
+### 4. Verify Services
 
-- **API Gateway**: http://localhost:8000/docs (Interactive API docs)
-- **BitNet Service**: http://localhost:8080
-- **YOLO Service**: http://localhost:8001
+```bash
+docker-compose ps
+```
+
 
 ## API Usage
 
@@ -68,7 +75,7 @@ This will:
 ```bash
 curl -X POST http://localhost:8000/bitnet/completion \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello, how are you?", "n_predict": 50}'
+  -d '{"prompt": "Is Banana Healthy?", "n_predict": 50}'
 ```
 
 ### YOLO Object Detection
@@ -78,37 +85,34 @@ curl -X POST http://localhost:8000/yolo/detect \
   -F "file=@tests/test_image.jpeg"
 ```
 
-### Health Check
+
+
+## Testing the Setup
+
+After starting services, verify everything is working:
 
 ```bash
+# Check all services are running
+docker-compose ps
+
+# Test health endpoint
 curl http://localhost:8000/health
+
+# Test BitNet
+curl -X POST http://localhost:8000/bitnet/completion \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello", "n_predict": 50}'
+
+# Test YOLO 
+curl -X POST http://localhost:8000/yolo/detect \
+  -F "file=@tests/test_image.jpeg"
+
+# Check MongoDB logs are being created
+curl http://localhost:8000/requests
 ```
-
-## How It Works
-
-The API Gateway acts as a unified entry point:
-
-1. **BitNet requests** → Gateway routes to `http://bitnet-service:8080/completion`
-2. **YOLO requests** → Gateway routes to `http://yolo-service:8001/detect`
-3. All services communicate via Docker's internal network (`milo-network`)
-
-The Gateway provides:
-- Unified API interface
-- Request/response validation
-- Error handling
-- Health monitoring
 
 ## Stopping Services
 
 ```bash
 docker-compose down
 ```
-
-## Notes
-
-- This stage does NOT include:
-  - MongoDB/Firebase integration (Stage 4-5)
-  - Request logging
-  - Output storage
-
-- For database integration, see Stage 4+ branches.
