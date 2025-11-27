@@ -48,6 +48,26 @@ services:
       retries: 3
       start_period: 30s
 
+  firebase-service:
+    build:
+      context: .
+      dockerfile: firebase-service/Dockerfile
+    container_name: firebase-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./firebase-key.json:/app/firebase-key.json:ro
+    networks:
+      - milo-network
+    environment:
+      - FIREBASE_CREDENTIALS=/app/firebase-key.json
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import requests; requests.get('http://localhost:8002/health', timeout=2)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   api:
     build:
       context: .
@@ -62,14 +82,19 @@ services:
         condition: service_healthy
       yolo-service:
         condition: service_healthy
+      firebase-service:
+        condition: service_healthy
     environment:
       - BITNET_MOCK=0
       - BITNET_URL=http://bitnet-service:8080
       - YOLO_SERVICE_URL=http://yolo-service:8001
+      - FIREBASE_SERVICE_URL=http://firebase-service:8002
       - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB_NAME=milo_db
+      - FIREBASE_CREDENTIALS=/app/firebase-key.json
     volumes:
       - ./tests/test_image.jpeg:/app/test_image.jpeg:ro
+      - ./firebase-key.json:/app/firebase-key.json:ro
     networks:
       - milo-network
     healthcheck:

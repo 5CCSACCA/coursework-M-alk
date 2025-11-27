@@ -3,14 +3,16 @@ import requests
 import logging
 from fastapi import APIRouter
 from ..models import HealthResponse
-from ..services import BitNetClient, DatabaseClient
+from ..services import BitNetClient, DatabaseClient, FirebaseClient
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 bitnet_client = BitNetClient()
 YOLO_SERVICE_URL = os.getenv("YOLO_SERVICE_URL", "http://yolo-service:8001")
+FIREBASE_SERVICE_URL = os.getenv("FIREBASE_SERVICE_URL", "http://firebase-service:8002")
 db_client = DatabaseClient()
+firebase_client = FirebaseClient()
 
 
 @router.get("/", response_model=dict, status_code=200)
@@ -25,10 +27,16 @@ async def root():
             "GET /health": "Check service health",
             "GET /requests": "Get request history (MongoDB)",
             "GET /requests/{id}": "Get specific request (MongoDB)",
+            "POST /firebase/outputs": "Create model output (Firebase)",
+            "GET /firebase/outputs": "Get model outputs (Firebase)",
+            "GET /firebase/outputs/{id}": "Get specific output (Firebase)",
+            "PUT /firebase/outputs/{id}": "Update output (Firebase)",
+            "DELETE /firebase/outputs/{id}": "Delete output (Firebase)",
             "GET /docs": "Interactive API documentation"
         },
         "storage": {
-            "mongodb": "Request logging and history"
+            "mongodb": "Request logging and history",
+            "firebase": "Model outputs with CRUD operations"
         },
         "models": {
             "bitnet": "BitNet-b1.58-2B-4T",
@@ -51,12 +59,25 @@ async def health_check():
     db_connected = db_client.is_connected()
     db_stats = db_client.get_stats()
     
+    firebase_connected = False
+    firebase_stats = None
+    try:
+        response = requests.get(f"{FIREBASE_SERVICE_URL}/health", timeout=2)
+        if response.status_code == 200:
+            data = response.json()
+            firebase_connected = data.get("connected", False)
+            firebase_stats = data.get("stats")
+    except Exception:
+        firebase_connected = False
+    
     return HealthResponse(
         status="ok" if (bitnet_healthy and yolo_available) else "degraded",
         model_loaded=bitnet_healthy,
         llama_server_running=bitnet_healthy,
         yolo_available=yolo_available,
         database_connected=db_connected,
-        database_stats=db_stats
+        database_stats=db_stats,
+        firebase_connected=firebase_connected,
+        firebase_stats=firebase_stats
     )
 

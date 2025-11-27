@@ -9,4 +9,6 @@ class HealthResponse(BaseModel):
     yolo_available: bool = False
     database_connected: bool = False
     database_stats: Optional[Dict[str, Any]] = None
+    firebase_connected: bool = False
+    firebase_stats: Optional[Dict[str, Any]] = None
 
