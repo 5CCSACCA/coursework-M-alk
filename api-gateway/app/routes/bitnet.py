@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, status
 from ..models import CompletionRequest, CompletionResponse
-from ..services import BitNetClient, DatabaseClient, FirebaseClient
+from ..services import BitNetClient, DatabaseClient, FirebaseClient, RabbitMQClient
 from ..utils import clean_response, is_low_quality_response
 
 router = APIRouter()
@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 bitnet_client = BitNetClient()
 db_client = DatabaseClient()
 firebase_client = FirebaseClient()
+rabbitmq_client = RabbitMQClient()
 
 
 @router.post("/completion", response_model=CompletionResponse, status_code=200)
@@ -54,6 +55,13 @@ async def completion(request: CompletionRequest):
         )
         
         firebase_client.create_output(
+            service="bitnet",
+            request_data=request.model_dump(),
+            response_data=response_data.model_dump(),
+            metadata={"mock": bitnet_client.mock_mode}
+        )
+        
+        rabbitmq_client.publish(
             service="bitnet",
             request_data=request.model_dump(),
             response_data=response_data.model_dump(),

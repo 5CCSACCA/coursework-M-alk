@@ -68,6 +68,35 @@ services:
       retries: 3
       start_period: 30s
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - milo-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  postprocessing-service:
+    build:
+      context: .
+      dockerfile: postprocessing-service/Dockerfile
+    container_name: postprocessing-service
+    networks:
+      - milo-network
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_QUEUE=model_outputs
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -84,6 +113,8 @@ services:
         condition: service_healthy
       firebase-service:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       - BITNET_MOCK=0
       - BITNET_URL=http://bitnet-service:8080
@@ -92,6 +123,8 @@ services:
       - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB_NAME=milo_db
       - FIREBASE_CREDENTIALS=/app/firebase-key.json
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_QUEUE=model_outputs
     volumes:
       - ./tests/test_image.jpeg:/app/test_image.jpeg:ro
       - ./firebase-key.json:/app/firebase-key.json:ro

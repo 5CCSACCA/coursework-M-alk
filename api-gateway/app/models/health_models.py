@@ -11,4 +11,5 @@ class HealthResponse(BaseModel):
     database_stats: Optional[Dict[str, Any]] = None
     firebase_connected: bool = False
     firebase_stats: Optional[Dict[str, Any]] = None
+    rabbitmq_connected: bool = False
 

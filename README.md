@@ -1,8 +1,8 @@
-# Milo AI - Stage 5: Firebase Integration (CRUD)
+# Milo AI - Stage 6: RabbitMQ Post-Processing
 
 ## Overview
 
-Stage 5 extends storage capabilities by integrating Firebase. Model outputs are stored in Firebase with full CRUD operations (Create, Read, Update, Delete).
+Stage 6 adds a post-processing service that processes model outputs asynchronously via RabbitMQ message queue. All services run seamlessly with a single Docker Compose command.
 
 ## Project Structure
 
@@ -12,7 +12,7 @@ coursework-MohamedAlketbi/
 │   ├── app/
 │   │   ├── routes/       # BitNet, YOLO, Database, Firebase routes
 │   │   ├── models/       # Request/response models
-│   │   ├── services/     # Service clients
+│   │   ├── services/     # Service clients (including RabbitMQ)
 │   │   └── utils/        # Utility functions
 │   ├── Dockerfile
 │   └── requirements.txt
@@ -26,12 +26,17 @@ coursework-MohamedAlketbi/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── app/
+├── postprocessing-service/  # Post processing worker (RabbitMQ consumer)
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       └── consumer.py
 ├── database/             # MongoDB & Firebase services
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── mongo_service.py
 │   └── firebase_service.py
-├── docker-compose.yml
+├── docker-compose.yml    # Orchestrates all services (includes RabbitMQ)
 └── README.md
 ```
 
@@ -52,18 +57,20 @@ wget https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/main/ggml-
 cd ../..
 ```
 
-### 3. Build and Start Services
+### 3. Build and Start All Services
 
 ```bash
 docker-compose build
 docker-compose up
 ```
 
-This will start all services:
-- **MongoDB** (port 27017) - Local database for request logging
-- **BitNet Service** (port 8080) - Text generation model
-- **YOLO Service** (port 8001) - Object detection model
-- **Firebase Service** (port 8002) - Firebase CRUD operations
+This single command starts all services:
+- **MongoDB** (port 27017) - Request logging
+- **RabbitMQ** (ports 5672, 15672) - Message queue
+- **BitNet Service** (port 8080) - Text generation
+- **YOLO Service** (port 8001) - Object detection
+- **Firebase Service** (port 8002) - CRUD operations
+- **Post-Processing Service** - Processes outputs from queue
 - **API Gateway** (port 8000) - Unified API endpoint
 
 ### 4. Verify Services
@@ -71,6 +78,16 @@ This will start all services:
 ```bash
 docker-compose ps
 ```
+
+## How It Works
+
+1. **API Gateway** receives requests and processes them (BitNet/YOLO)
+2. **Outputs are stored** in MongoDB (logging) and Firebase (CRUD)
+3. **Messages are published** to RabbitMQ queue
+4. **Post-Processing Service** consumes messages and processes outputs:
+   - BitNet: word count, character count, content analysis
+   - YOLO: detection count, unique labels extraction
+5. All services communicate via Docker network
 
 ## API Usage
 
@@ -103,43 +120,32 @@ curl http://localhost:8000/firebase/outputs
 
 # Get outputs by service
 curl http://localhost:8000/firebase/outputs?service=bitnet
-curl http://localhost:8000/firebase/outputs?service=yolo
-
-# Get specific output
-curl http://localhost:8000/firebase/outputs/{output_id}
-
-# Update output
-curl -X PUT http://localhost:8000/firebase/outputs/{output_id} \
-  -H "Content-Type: application/json" \
-  -d '{"metadata": {"updated": true}}'
-
-# Delete output
-curl -X DELETE http://localhost:8000/firebase/outputs/{output_id}
 ```
+
+## RabbitMQ Management
+
+Access RabbitMQ management UI:
+- URL: http://localhost:15672
+- Default credentials: `guest` / `guest`
+
+View queues, messages, and connections.
 
 ## Testing the Setup
 
 ```bash
-# Check all services are running
+# Check all services
 docker-compose ps
 
-# Test health endpoint
+# Test health
 curl http://localhost:8000/health
 
-# Test BitNet
+# Test BitNet (triggers post-processing)
 curl -X POST http://localhost:8000/bitnet/completion \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Hello", "n_predict": 50}'
 
-# Test YOLO
-curl -X POST http://localhost:8000/yolo/detect \
-  -F "file=@tests/test_image.jpeg"
-
-# Check MongoDB logs
-curl http://localhost:8000/requests
-
-# Check Firebase outputs
-curl http://localhost:8000/firebase/outputs
+# Check post-processing logs
+docker-compose logs postprocessing-service
 ```
 
 ## Stopping Services

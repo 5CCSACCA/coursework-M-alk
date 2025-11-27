@@ -3,7 +3,7 @@ import requests
 import logging
 from fastapi import APIRouter
 from ..models import HealthResponse
-from ..services import BitNetClient, DatabaseClient, FirebaseClient
+from ..services import BitNetClient, DatabaseClient, FirebaseClient, RabbitMQClient
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -13,6 +13,7 @@ YOLO_SERVICE_URL = os.getenv("YOLO_SERVICE_URL", "http://yolo-service:8001")
 FIREBASE_SERVICE_URL = os.getenv("FIREBASE_SERVICE_URL", "http://firebase-service:8002")
 db_client = DatabaseClient()
 firebase_client = FirebaseClient()
+rabbitmq_client = RabbitMQClient()
 
 
 @router.get("/", response_model=dict, status_code=200)
@@ -37,6 +38,10 @@ async def root():
         "storage": {
             "mongodb": "Request logging and history",
             "firebase": "Model outputs with CRUD operations"
+        },
+        "messaging": {
+            "rabbitmq": "Message queue for post-processing",
+            "postprocessing": "Async output processing service"
         },
         "models": {
             "bitnet": "BitNet-b1.58-2B-4T",
@@ -70,6 +75,8 @@ async def health_check():
     except Exception:
         firebase_connected = False
     
+    rabbitmq_connected = rabbitmq_client.is_connected()
+    
     return HealthResponse(
         status="ok" if (bitnet_healthy and yolo_available) else "degraded",
         model_loaded=bitnet_healthy,
@@ -78,6 +85,7 @@ async def health_check():
         database_connected=db_connected,
         database_stats=db_stats,
         firebase_connected=firebase_connected,
-        firebase_stats=firebase_stats
+        firebase_stats=firebase_stats,
+        rabbitmq_connected=rabbitmq_connected
     )
 
