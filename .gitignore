@@ -37,10 +37,6 @@ Video
 bitnet/model/*
 !bitnet/model/.gitkeep
 
-# Test files
-test_image.jpg
-test_image.jpeg
-test_image.png
 
 # Data
 data/

@@ -10,8 +10,8 @@ WORKDIR /app
 COPY yolo-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN mkdir -p /app/model
 COPY yolo-service/app/ /app/app/
-COPY yolo-service/model/ /app/model/
 
 ENV PYTHONPATH=/app
 

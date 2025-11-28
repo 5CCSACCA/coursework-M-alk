@@ -2,12 +2,10 @@ from ultralytics import YOLO
 from PIL import Image
 import io
 import os
-from pathlib import Path
 
 os.environ["TORCH_WEIGHTS_ONLY"] = "False"
 
-MODEL_PATH = Path(__file__).parent.parent / "model" / "yolo11n.pt"
-model = YOLO(str(MODEL_PATH))
+model = YOLO("yolo11n.pt")
 
 def detect_objects(image_bytes: bytes):
     try:
